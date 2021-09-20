@@ -12,3 +12,4 @@ path = "src/bin.rs"
 
 
 [dependencies]
+termion = "*"
