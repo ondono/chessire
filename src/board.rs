@@ -103,6 +103,7 @@ pub fn file_by_index(index: usize) -> usize {
     index & 0x07
 }
 
+#[inline(always)]
 pub fn file_char_by_index(index: usize) -> char {
     ((index & 0x07) as u8 + 'A' as u8).to_ascii_uppercase() as char
 }
@@ -117,12 +118,28 @@ pub fn is_off_board(index: usize) -> bool {
     index & 0x88 != 0
 }
 
+pub fn validated_position(index: usize) -> Option<usize> {
+    if is_off_board(index) {
+        None
+    } else {
+        Some(index)
+    }
+}
+
+pub fn get_name_from_index(index: usize) -> String {
+    let mut s = String::from("");
+    s.push(file_char_by_index(index));
+    s.push_str(&(rank_by_index(index) + 1).to_string());
+    s
+}
+
 const PIECE_PLACEMENT: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
 
 pub struct Board {
     squares: [Option<Piece>; 128],
     selected: usize,
     highlighted: Vec<usize>,
+    perspective: Color,
 }
 
 impl Board {
@@ -131,6 +148,7 @@ impl Board {
             squares: [None; 128],
             selected: 0x78,
             highlighted: vec![],
+            perspective: Color::White,
         }
     }
     pub fn set_position_from_fen(&mut self, piece_placement: &str) {
@@ -162,67 +180,147 @@ impl Board {
     pub fn remove_from_highlighted(&mut self, index: usize) {
         self.highlighted.remove(index);
     }
+    // this is not efficient and should only be used when setting a new position
+    pub fn get_piece_list(&self) -> Vec<(usize, Piece)> {
+        let mut piecelist = vec![];
+        for (i, sq) in self.squares.iter().enumerate() {
+            if let Some(p) = sq {
+                piecelist.push((i, p.clone()))
+            }
+        }
+        piecelist
+    }
+    pub fn set_perspective(&mut self, color: Color) {
+        self.perspective = color;
+    }
 }
 
 impl fmt::Display for Board {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}{}\r\n    {}  {}  {}  {}  {}  {}  {}  {}",
-            color::Fg(color::White),
-            color::Bg(color::Reset),
-            'A',
-            'B',
-            'C',
-            'D',
-            'E',
-            'F',
-            'G',
-            'H'
-        )?;
-        for (i, sq) in self.squares.iter().skip(1).enumerate() {
-            // loop over all squares
-            if i & 0x88 == 0 {
-                // ignore out of board squares
-                let file = file_by_index(i);
-                let rank = rank_by_index(i) + 1;
+        if self.perspective == Color::White {
+            // print the board from white's perspective
+            write!(
+                f,
+                "{}{}\r\n    {}  {}  {}  {}  {}  {}  {}  {}\r\n",
+                color::Fg(color::White),
+                color::Bg(color::Reset),
+                'H',
+                'G',
+                'F',
+                'E',
+                'D',
+                'C',
+                'B',
+                'A'
+            )?;
+            for (u, sq) in self.squares.iter().enumerate().rev() {
+                // loop over all squares
+                let i = if u >= 1 { u - 1 } else { 0xff };
 
-                // if we are at the start of a rank, print the name
-                if i & 0x0F == 0 {
-                    write!(
-                        f,
-                        "{}{}\n {} ",
-                        color::Fg(color::White),
-                        color::Bg(color::Reset),
-                        rank
-                    )?;
-                }
-                let tile_color = if i == self.selected {
-                    color::Rgb(200, 200, 0)
-                } else if self.highlighted.contains(&i) {
-                    color::Rgb(200, 0, 0)
-                } else {
-                    // this sets the tile white or black
-                    if (file + rank) & 0x01 == 0 {
-                        color::Rgb(200, 200, 200)
-                    } else {
-                        color::Rgb(100, 100, 100)
+                if i & 0x88 == 0 {
+                    // ignore out of board squares
+                    let file = file_by_index(i);
+                    let rank = rank_by_index(i) + 1;
+
+                    if i & 0x0F == 7 {
+                        write!(
+                            f,
+                            "{}{} {} ",
+                            color::Fg(color::White),
+                            color::Bg(color::Reset),
+                            rank
+                        )?;
                     }
-                };
+                    let tile_color = if i == self.selected {
+                        color::Rgb(200, 200, 0)
+                    } else if self.highlighted.contains(&i) {
+                        color::Rgb(200, 0, 0)
+                    } else {
+                        // this sets the tile white or black
+                        if (file + rank) & 0x01 == 0 {
+                            color::Rgb(200, 200, 200)
+                        } else {
+                            color::Rgb(100, 100, 100)
+                        }
+                    };
 
-                // print the piece (if any)
-                match sq {
-                    Some(piece) => write!(f, "{} {} ", color::Bg(tile_color), piece)?,
-                    _ => write!(f, "{}   ", color::Bg(tile_color))?,
-                };
+                    // print the piece (if any)
+                    match sq {
+                        Some(piece) => write!(f, "{} {} ", color::Bg(tile_color), piece)?,
+                        _ => write!(f, "{}   ", color::Bg(tile_color))?,
+                    };
+                    if i & 0x0F == 0 {
+                        write!(f, "{}\r\n", color::Bg(color::Reset))?;
+                    }
+                }
             }
+            // add an empty line and clear all styling
+            write!(
+                f,
+                "{}{}\r\n",
+                color::Fg(color::Reset),
+                color::Bg(color::Reset)
+            )
+        } else {
+            // print the board from black's perspective
+            write!(
+                f,
+                "{}{}\r\n    {}  {}  {}  {}  {}  {}  {}  {}",
+                color::Fg(color::White),
+                color::Bg(color::Reset),
+                'A',
+                'B',
+                'C',
+                'D',
+                'E',
+                'F',
+                'G',
+                'H'
+            )?;
+            for (i, sq) in self.squares.iter().skip(1).enumerate() {
+                // loop over all squares
+                if i & 0x88 == 0 {
+                    // ignore out of board squares
+                    let file = file_by_index(i);
+                    let rank = rank_by_index(i) + 1;
+
+                    // if we are at the start of a rank, print the name
+                    if i & 0x0F == 0 {
+                        write!(
+                            f,
+                            "{}{}\n {} ",
+                            color::Fg(color::White),
+                            color::Bg(color::Reset),
+                            rank
+                        )?;
+                    }
+                    let tile_color = if i == self.selected {
+                        color::Rgb(200, 200, 0)
+                    } else if self.highlighted.contains(&i) {
+                        color::Rgb(200, 0, 0)
+                    } else {
+                        // this sets the tile white or black
+                        if (file + rank) & 0x01 == 0 {
+                            color::Rgb(200, 200, 200)
+                        } else {
+                            color::Rgb(100, 100, 100)
+                        }
+                    };
+
+                    // print the piece (if any)
+                    match sq {
+                        Some(piece) => write!(f, "{} {} ", color::Bg(tile_color), piece)?,
+                        _ => write!(f, "{}   ", color::Bg(tile_color))?,
+                    };
+                }
+            }
+            // add an empty line and clear all styling
+            write!(
+                f,
+                "{}{}\r\n",
+                color::Fg(color::Reset),
+                color::Bg(color::Reset)
+            )
         }
-        // add an empty line and clear all styling
-        write!(
-            f,
-            "{}{}\r\n",
-            color::Fg(color::Reset),
-            color::Bg(color::Reset)
-        )
     }
 }

@@ -1,7 +1,9 @@
 pub mod board;
+pub mod moves;
 pub mod piece;
 
 use board::*;
+use moves::*;
 use piece::Color::Black;
 use piece::Color::White;
 use piece::*;
@@ -59,6 +61,7 @@ pub struct ChessGame {
     enpassant_target_square: Option<usize>,
     halfmove_clock: u32,
     fullmove_clock: u32,
+    piece_list: Vec<(usize, Piece)>,
 }
 
 impl ChessGame {
@@ -70,6 +73,7 @@ impl ChessGame {
             enpassant_target_square: None,
             halfmove_clock: 0,
             fullmove_clock: 1,
+            piece_list: vec![],
         }
     }
     pub fn set_position_from_fen(&mut self, fen_string: &str) {
@@ -80,6 +84,8 @@ impl ChessGame {
             .next()
             .unwrap_or("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR");
         self.board.set_position_from_fen(piece_placement);
+        // fill the piece list too!
+        self.piece_list.append(&mut self.board.get_piece_list());
 
         // side to move
         let side_to_move = fields.next().unwrap_or("w");
@@ -173,10 +179,68 @@ pub fn test() {
     println!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     // now test
     game.board.set_start_position();
-    game.set_position_from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w Qk f6 10 20");
-    //    game.board.select(C6);
-    //    game.board.add_to_highlighted(D5);
-    //    game.board.add_to_highlighted(E4);
-    //    game.board.add_to_highlighted(F3);
+    println!("{}", game);
+    game.board.set_perspective(Color::Black);
+    println!("{}", game);
+
+    let position = D4;
+    println!("{}", get_name_from_index(position));
+    game.board.select(position);
+    // up
+    if let Some(next) = next_up(position) {
+        println!("up: {}", get_name_from_index(next));
+        game.board.add_to_highlighted(next);
+    } else {
+        println!("up: None");
+    }
+    // up right
+    if let Some(next) = next_up_right(position) {
+        println!("up-right: {}", get_name_from_index(next));
+        game.board.add_to_highlighted(next);
+    } else {
+        println!("up-right: None");
+    }
+    // right
+    if let Some(next) = next_right(position) {
+        println!("right: {}", get_name_from_index(next));
+        game.board.add_to_highlighted(next);
+    } else {
+        println!("right: None");
+    }
+    // down right
+    if let Some(next) = next_down_right(position) {
+        println!("down-right: {}", get_name_from_index(next));
+        game.board.add_to_highlighted(next);
+    } else {
+        println!("down-right: None");
+    }
+    // down
+    if let Some(next) = next_down(position) {
+        println!("down: {}", get_name_from_index(next));
+        game.board.add_to_highlighted(next);
+    } else {
+        println!("down: None");
+    }
+    // down left
+    if let Some(next) = next_down_left(position) {
+        println!("down-left: {}", get_name_from_index(next));
+        game.board.add_to_highlighted(next);
+    } else {
+        println!("down-left: None");
+    }
+    // left
+    if let Some(next) = next_left(position) {
+        println!("left: {}", get_name_from_index(next));
+        game.board.add_to_highlighted(next);
+    } else {
+        println!("left: None");
+    }
+    // up left
+    if let Some(next) = next_up_left(position) {
+        println!("up-left: {}", get_name_from_index(next));
+        game.board.add_to_highlighted(next);
+    } else {
+        println!("up-left: None");
+    }
     println!("{}", game);
 }
