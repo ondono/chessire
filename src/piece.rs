@@ -1,3 +1,5 @@
+use std::ops::{Index, IndexMut};
+
 use termion::color;
 
 /****************************/
@@ -6,27 +8,40 @@ use termion::color;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Color {
-    White,
-    Black,
+    White = 0,
+    Black = 1,
 }
 
 impl core::fmt::Display for Color {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
-        match self {
-            Color::Black => write!(
-                f,
-                "{}{}{}",
-                color::Fg(color::Rgb(0, 0, 0)),
-                "B",
-                color::Fg(color::Reset)
-            ),
-            Color::White => write!(
-                f,
-                "{}{}{}",
-                color::Fg(color::Rgb(255, 255, 255)),
-                "W",
-                color::Fg(color::Reset)
-            ),
+        let (letter, col) = if *self == White {
+            ("W", color::Rgb(255, 255, 255))
+        } else {
+            ("B", color::Rgb(0, 0, 0))
+        };
+        write!(f, "{}{}{}", color::Fg(col), letter, color::Fg(color::Reset))
+    }
+}
+
+use crate::bitboard::*;
+//TODO: find a fix for this!
+impl Index<Color> for [BitBoard] {
+    type Output = BitBoard;
+
+    fn index(&self, c: Color) -> &Self::Output {
+        if c == White {
+            &self[White]
+        } else {
+            &self[Black]
+        }
+    }
+}
+impl IndexMut<Color> for [BitBoard] {
+    fn index_mut(&mut self, c: Color) -> &mut Self::Output {
+        if c == White {
+            &mut self[White]
+        } else {
+            &mut self[Black]
         }
     }
 }
@@ -42,7 +57,7 @@ const VALUE_BISHOP: i32 = 30;
 const VALUE_KNIGHT: i32 = 30;
 const VALUE_PAWN: i32 = 10;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Piece {
     King(Color),
     Queen(Color),
@@ -58,23 +73,18 @@ use Piece::*;
 impl core::fmt::Display for Piece {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
         //let p = self.get_letter(); // enable this one if unicode gives trouble
-        let p = self.get_symbol();
-        match self.get_color() {
-            Black => write!(
-                f,
-                "{}{}{}",
-                color::Fg(color::Rgb(0, 0, 0)),
-                p,
-                color::Fg(color::Reset)
-            ),
-            White => write!(
-                f,
-                "{}{}{}",
-                color::Fg(color::Rgb(255, 255, 255)),
-                p,
-                color::Fg(color::Reset)
-            ),
-        }
+        let color = if self.get_color() == White {
+            color::Rgb(0, 0, 0)
+        } else {
+            color::Rgb(255, 255, 255)
+        };
+        write!(
+            f,
+            "{}{}{}",
+            color::Fg(color),
+            self.get_symbol(),
+            color::Fg(color::Reset)
+        )
     }
 }
 
@@ -95,7 +105,7 @@ impl Piece {
             //            Rook(Black) => "♜",
             King(_c) => "♚",
             Queen(_c) => "♛",
-            Pawn(_c) => "♟︎",
+            Pawn(_c) => "♟",
             Knight(_c) => "♞",
             Bishop(_c) => "♝",
             Rook(_c) => "♜",
@@ -109,7 +119,7 @@ impl Piece {
             Queen(White) => "♕",
             Queen(Black) => "♛",
             Pawn(White) => "♙",
-            Pawn(Black) => "♟︎",
+            Pawn(Black) => "♟",
             Knight(White) => "♘",
             Knight(Black) => "♞",
             Bishop(White) => "♗",
@@ -177,5 +187,8 @@ impl Piece {
             'k' => Some(Self::King(Black)),
             _ => None,
         }
+    }
+    pub fn is_sliding_piece(&self) -> bool {
+        matches!(self, Queen(_) | Bishop(_) | Rook(_))
     }
 }
