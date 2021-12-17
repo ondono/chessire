@@ -2,15 +2,15 @@
 name = "chessire"
 version = "0.1.0"
 edition = "2018"
-
+default-run = "cli"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-
 [[bin]]
-name = "chessire-bin"
-path = "src/bin.rs"
-
+name = "cli"
+path = "src/bin/cli.rs"
 
 [dependencies]
 termion = "*"
 rand = "*"
+criterion = "*"
+rayon = "1.5"

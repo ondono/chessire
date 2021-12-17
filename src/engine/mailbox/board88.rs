@@ -47,7 +47,7 @@ pub fn get_name_from_index(index: usize) -> String {
 const PIECE_PLACEMENT: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
 
 #[derive(Clone)]
-pub struct Board {
+pub struct Board88 {
     pub squares: [Option<Piece>; 128],
     selected: usize,
     highlighted: Vec<usize>,

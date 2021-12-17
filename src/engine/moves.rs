@@ -152,21 +152,22 @@ impl Move {
 
 pub fn get_piece_pseudolegal_moves(mut g: ChessGame, (i, p): (usize, Piece)) -> Vec<Move> {
     let color = p.get_color();
+    let move_gen = MoveGenerator::new();
     let mut moves = vec![];
     if color == g.side_to_move {
         moves = match p {
-            King(color) => g.move_gen.get_king_pseudolegal_moves(
+            King(color) => move_gen.get_king_pseudolegal_moves(
                 i,
                 &g.board,
-                &g.move_gen.attack[color as usize],
+                &move_gen.attack[color as usize],
                 g.castling_rights,
                 color,
             ),
-            Queen(color) => g.move_gen.get_queen_pseudolegal_moves(i, &g.board, color),
-            Rook(color) => g.move_gen.get_rook_pseudolegal_moves(i, &g.board, color),
-            Bishop(color) => g.move_gen.get_bishop_pseudolegal_moves(i, &g.board, color),
-            Knight(color) => g.move_gen.get_knight_pseudolegal_moves(i, &g.board, color),
-            Pawn(color) => g.move_gen.get_pawn_pseudolegal_moves(
+            Queen(color) => move_gen.get_queen_pseudolegal_moves(i, &g.board, color),
+            Rook(color) => move_gen.get_rook_pseudolegal_moves(i, &g.board, color),
+            Bishop(color) => move_gen.get_bishop_pseudolegal_moves(i, &g.board, color),
+            Knight(color) => move_gen.get_knight_pseudolegal_moves(i, &g.board, color),
+            Pawn(color) => move_gen.get_pawn_pseudolegal_moves(
                 i,
                 &g.board,
                 color,
@@ -185,16 +186,17 @@ pub fn get_piece_pseudolegal_moves(mut g: ChessGame, (i, p): (usize, Piece)) -> 
 
 pub fn slow_is_legal(g: &mut ChessGame, mov: Move) -> bool {
     let mut legal: bool = true;
+    let move_gen = MoveGenerator::new();
     let color = g.side_to_move;
     // make the move in question
     g.make_move(mov);
     // check if the king is in check
     if color == White {
-        if g.move_gen.attack[White as usize].get_value(g.white_king_pos) != 0 {
+        if move_gen.attack[White as usize].get_value(g.white_king_pos) != 0 {
             legal = false;
         }
     } else {
-        if g.move_gen.attack[Black as usize].get_value(g.black_king_pos) != 0 {
+        if move_gen.attack[Black as usize].get_value(g.black_king_pos) != 0 {
             legal = false;
         }
     }
