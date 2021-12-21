@@ -13,12 +13,11 @@ pub struct ChessireEngine {
 
 impl Default for ChessireEngine {
     fn default() -> Self {
-        let mut e = Self {
+        Self {
             name: "Chessire".to_string(),
             author: "Xavi Ondoño".to_string(),
             bb_engine: BitBoardEngine::new(),
-        };
-        e
+        }
     }
 }
 
@@ -30,4 +29,6 @@ impl ChessireEngine {
     pub fn new() -> Self {
         Self::default()
     }
+
+    pub fn set_position(&mut self) {}
 }

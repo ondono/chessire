@@ -1,4 +1,11 @@
 use super::*;
+
+/* See the chessprogramming wiki for details about occupancy */
+/* The general idea is that we want to mask the bits of squares that *can* be attacked
+ * (horizontal + vertical for rooks, diagonals for bishops) and then construct a
+ * binary number with them.
+ */
+
 // Generate relevant occupancy bits
 pub fn generate_bishop_relevant_ocupancy(sq: usize) -> BitBoard {
     let mut bb = BitBoard::new(0);

@@ -22,30 +22,35 @@ pub fn main() {
     let mut input_string: String = "".to_string();
     input_string.clear();
 
-    let block_const = A1 | D4;
+    let blockers_list = [D4, EDGE_OF_BOARD, FILE_C | RANK_2, B2 | H7];
 
-    for sq in 0..64 {
-        let blocker = BitBoard::new(block_const);
+    for block_const in blockers_list {
+        for sq in 0..64 {
+            let blocker = BitBoard::new(block_const);
 
-        let on_the_fly = rook_attacks_on_the_fly(sq, blocker);
-        let bitboarded = get_rook_attack(&engine.bb_engine.attack_tables, sq, blocker);
+            let rook_on_the_fly = rook_attacks_on_the_fly(sq, blocker);
+            let rook_bitboarded = get_rook_attack(&engine.bb_engine.attack_tables, sq, blocker);
 
-        println!(
-            "{} {} {}",
-            blocker,
-            get_bishop_attack(&engine.bb_engine.attack_tables, sq, blocker),
-            get_rook_attack(&engine.bb_engine.attack_tables, sq, blocker)
-        );
-        // if on_the_fly != bitboarded {
-        //     println!(
-        //         "square:{} blocker:{} on the fly:{} bitboard:{}",
-        //         sq, blocker, on_the_fly, bitboarded
-        //     );
-        stdin()
-            .read_line(&mut input_string)
-            .expect("failed to get depth");
-        input_string.clear();
-        // }
+            let bishop_on_the_fly = bishop_attacks_on_the_fly(sq, blocker);
+            let bishop_bitboarded = get_bishop_attack(&engine.bb_engine.attack_tables, sq, blocker);
+
+            if rook_on_the_fly != rook_bitboarded {
+                println!("Found rook error!");
+                stdin()
+                    .read_line(&mut input_string)
+                    .expect("failed to get depth");
+                input_string.clear();
+            }
+
+            if bishop_on_the_fly != bishop_bitboarded {
+                println!("Found bishop error!");
+                stdin()
+                    .read_line(&mut input_string)
+                    .expect("failed to get depth");
+                input_string.clear();
+            }
+            // }
+        }
     }
 }
 
