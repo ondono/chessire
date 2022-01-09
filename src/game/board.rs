@@ -59,6 +59,12 @@ pub struct SelectionColor {
     pub blue: u8,
 }
 
+impl SelectionColor {
+    pub fn new(red: u8, green: u8, blue: u8) -> Self {
+        Self { red, green, blue }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Selection {
     squares: Vec<Tile>,
@@ -76,6 +82,12 @@ impl fmt::Display for Selection {
             write!(f, "{}", sq)?;
         }
         Ok(())
+    }
+}
+
+impl Selection {
+    pub fn new(squares: Vec<Tile>, color: SelectionColor) -> Self {
+        Self { squares, color }
     }
 }
 
@@ -168,6 +180,12 @@ impl Board {
         self.selections.clear();
         self.perspective = White;
     }
+    pub fn add_selection(&mut self, sel: Selection) {
+        self.selections.push(sel);
+    }
+    pub fn clear_selections(&mut self) {
+        self.selections.clear();
+    }
     //    pub fn select(&mut self, index: usize) {
     //        self.selected = index;
     //    }
@@ -238,13 +256,33 @@ impl fmt::Display for Board {
             for file in 0..8 {
                 let coord = Coord::new(file, rank);
                 let sq = self[coord];
-                let tile_color =
+                let mut tile_color =
                     // this sets the tile white or black
                     if (file + rank) & 0x01 == 1 {
                         color::Rgb(200, 200, 200)
                     } else {
                         color::Rgb(100, 100, 100)
                     };
+
+                for sel in &self.selections {
+                    for selected_square in &sel.squares {
+                        if coord.to_usize() == *selected_square {
+                            if (file + rank) & 0x01 == 1 {
+                                tile_color = color::Rgb(
+                                    ((sel.color.red as u16 + 200) / 2) as u8,
+                                    ((sel.color.green as u16 + 200) / 2) as u8,
+                                    ((sel.color.blue as u16 + 200) / 2) as u8,
+                                );
+                            } else {
+                                tile_color = color::Rgb(
+                                    ((sel.color.red as u16 + 100) / 2) as u8,
+                                    ((sel.color.green as u16 + 100) / 2) as u8,
+                                    ((sel.color.blue as u16 + 100) / 2) as u8,
+                                );
+                            }
+                        }
+                    }
+                }
 
                 match sq {
                     Some(piece) => write!(f, "{} {} ", color::Bg(tile_color), piece)?,
