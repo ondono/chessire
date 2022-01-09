@@ -5,24 +5,46 @@ pub mod occupancy;
 pub mod tests;
 pub mod util;
 
-use super::ChessGame;
+use super::board::*;
+use super::color::*;
+use super::piece::*;
 use crate::game::color::Color::{Black, White};
 use attacks::*;
 use constants::*;
 use occupancy::*;
 use util::*;
 
+// bitboard state indexes
+
+pub const WHITE_PAWN: usize = 0;
+pub const WHITE_KNIGHT: usize = 1;
+pub const WHITE_BISHOP: usize = 2;
+pub const WHITE_ROOK: usize = 3;
+pub const WHITE_QUEEN: usize = 4;
+pub const WHITE_KING: usize = 5;
+
+pub const BLACK_PAWN: usize = 6;
+pub const BLACK_KNIGHT: usize = 7;
+pub const BLACK_BISHOP: usize = 8;
+pub const BLACK_ROOK: usize = 9;
+pub const BLACK_QUEEN: usize = 10;
+pub const BLACK_KING: usize = 11;
+
+pub const BOTH: usize = 2;
+
 #[derive(Debug, Clone)]
 pub struct BitBoardEngine {
     pub attack_tables: AttackTables,
-    pub current_position: BitBoard,
+    pub current_position: [BitBoard; 12],
+    pub occupancies: [BitBoard; 3],
 }
 
 impl Default for BitBoardEngine {
     fn default() -> Self {
         let mut engine = Self {
             attack_tables: AttackTables::new(),
-            current_position: BitBoard::new(0),
+            current_position: [BitBoard::new(0); 12],
+            occupancies: [BitBoard::new(0xFFFFFFFFFFFFFFFF); 3],
         };
         engine.init();
         engine
@@ -36,6 +58,96 @@ impl BitBoardEngine {
 
     pub fn new() -> Self {
         Self::default()
+    }
+
+    pub fn set_position(&mut self, b: Board) {
+        for (sq, p) in b.squares.iter().enumerate() {
+            if p.is_some() {
+                match p.unwrap() {
+                    Piece::King(White) => self.current_position[WHITE_KING].set_bit(sq),
+                    Piece::Queen(White) => self.current_position[WHITE_QUEEN].set_bit(sq),
+                    Piece::Rook(White) => self.current_position[WHITE_ROOK].set_bit(sq),
+                    Piece::Bishop(White) => self.current_position[WHITE_BISHOP].set_bit(sq),
+                    Piece::Knight(White) => self.current_position[WHITE_KNIGHT].set_bit(sq),
+                    Piece::Pawn(White) => self.current_position[WHITE_PAWN].set_bit(sq),
+
+                    Piece::King(Black) => self.current_position[BLACK_KING].set_bit(sq),
+                    Piece::Queen(Black) => self.current_position[BLACK_QUEEN].set_bit(sq),
+                    Piece::Rook(Black) => self.current_position[BLACK_ROOK].set_bit(sq),
+                    Piece::Bishop(Black) => self.current_position[BLACK_BISHOP].set_bit(sq),
+                    Piece::Knight(Black) => self.current_position[BLACK_KNIGHT].set_bit(sq),
+                    Piece::Pawn(Black) => self.current_position[BLACK_PAWN].set_bit(sq),
+                }
+            }
+        }
+        for i in WHITE_PAWN..BLACK_PAWN {
+            self.occupancies[White as usize]
+                .set(self.occupancies[White as usize].get() | self.current_position[i].get());
+        }
+        for i in BLACK_PAWN..(BLACK_KING + 1) {
+            self.occupancies[Black as usize]
+                .set(self.occupancies[Black as usize].get() | self.current_position[i].get());
+        }
+        self.occupancies[BOTH]
+            .set(self.occupancies[White as usize].get() | self.occupancies[Black as usize].get());
+    }
+
+    #[inline]
+    pub fn is_square_attacked_by(&self, sq: usize, col: Color) -> bool {
+        match col {
+            White => {
+                let pawn = self.current_position[WHITE_PAWN].get()
+                    & self.attack_tables.pawn_attacks[Black as usize][sq].get()
+                    != 0;
+
+                let knight = self.current_position[WHITE_KNIGHT].get()
+                    & self.attack_tables.knight_attacks[sq].get()
+                    != 0;
+
+                let bishop = self.current_position[WHITE_BISHOP].get()
+                    & get_bishop_attack(&self.attack_tables, sq, self.occupancies[BOTH]).get()
+                    != 0;
+
+                let rook = self.current_position[WHITE_ROOK].get()
+                    & get_rook_attack(&self.attack_tables, sq, self.occupancies[BOTH]).get()
+                    != 0;
+
+                let queen = self.current_position[WHITE_QUEEN].get()
+                    & get_queen_attack(&self.attack_tables, sq, self.occupancies[BOTH]).get()
+                    != 0;
+                let king = false;
+
+                pawn || knight || bishop || rook || queen || king
+            }
+            Black => {
+                let pawn = self.current_position[BLACK_PAWN].get()
+                    & self.attack_tables.pawn_attacks[White as usize][sq].get()
+                    != 0;
+
+                let knight = self.current_position[BLACK_KNIGHT].get()
+                    & self.attack_tables.knight_attacks[sq].get()
+                    != 0;
+
+                let bishop = self.current_position[BLACK_BISHOP].get()
+                    & get_bishop_attack(&self.attack_tables, sq, self.occupancies[BOTH]).get()
+                    != 0;
+
+                let rook = self.current_position[BLACK_ROOK].get()
+                    & get_rook_attack(&self.attack_tables, sq, self.occupancies[BOTH]).get()
+                    != 0;
+
+                let queen = self.current_position[BLACK_QUEEN].get()
+                    & get_queen_attack(&self.attack_tables, sq, self.occupancies[0]).get()
+                    != 0;
+                let king = false;
+
+                pawn || knight || bishop || rook || queen || king
+            }
+        }
+    }
+    #[inline]
+    pub fn get_moves() {
+        //
     }
 }
 
