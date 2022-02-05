@@ -11,47 +11,40 @@ use chessire::engine::bitboard::util::*;
 
 use chessire::engine::bitboard::attacks::{bishop_attacks_on_the_fly, rook_attacks_on_the_fly};
 
+use chessire::game::*;
+
 pub fn main() {
     terminal_clear();
     println!("Running Chessire test CLI");
     let mut game = ChessGame::new();
     let mut engine = ChessireEngine::new();
 
-    println!("{}", game.board);
+    //game.apply_fen("8/8/3p4/8/8/3P4/8/8 w KQkq - 0 1");
 
     let mut input_string: String = "".to_string();
     input_string.clear();
 
-    let blockers_list = [D4, EDGE_OF_BOARD, FILE_C | RANK_2, B2 | H7];
+    engine.set_position(game.clone());
 
-    for block_const in blockers_list {
-        for sq in 0..64 {
-            let blocker = BitBoard::new(block_const);
-
-            let rook_on_the_fly = rook_attacks_on_the_fly(sq, blocker);
-            let rook_bitboarded = get_rook_attack(&engine.bb_engine.attack_tables, sq, blocker);
-
-            let bishop_on_the_fly = bishop_attacks_on_the_fly(sq, blocker);
-            let bishop_bitboarded = get_bishop_attack(&engine.bb_engine.attack_tables, sq, blocker);
-
-            if rook_on_the_fly != rook_bitboarded {
-                println!("Found rook error!");
-                stdin()
-                    .read_line(&mut input_string)
-                    .expect("failed to get depth");
-                input_string.clear();
-            }
-
-            if bishop_on_the_fly != bishop_bitboarded {
-                println!("Found bishop error!");
-                stdin()
-                    .read_line(&mut input_string)
-                    .expect("failed to get depth");
-                input_string.clear();
-            }
-            // }
-        }
+    let mut attacked_by_white = vec![];
+    for sq in engine.get_attacked_squares_by(White) {
+        attacked_by_white.push(sq);
     }
+
+    let mut attacked_by_black = vec![];
+    for sq in engine.get_attacked_squares_by(Black) {
+        attacked_by_black.push(sq);
+    }
+
+    // add selections
+    let white_sel = Selection::new(attacked_by_white, SelectionColor::new(200, 0, 0));
+    let black_sel = Selection::new(attacked_by_black, SelectionColor::new(0, 200, 0));
+
+    game.board.add_selection(white_sel);
+    game.board.add_selection(black_sel);
+
+    //print board
+    println!("{}", game.board);
 }
 
 fn terminal_clear() {

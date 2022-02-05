@@ -36,14 +36,17 @@ impl ChessireEngine {
         self.bb_engine.set_position(g.board);
     }
 
-    pub fn get_attacked_squares_by(&self, col: Color) -> Vec<usize> {
+    pub fn get_attacked_squares_by(&self, side: Color) -> Vec<usize> {
         let mut ret = vec![];
         // return set of attacked squares
         for sq in 0..64 {
-            if self.bb_engine.is_square_attacked_by(sq, col) {
+            if self.bb_engine.is_square_attacked_by(sq, side) {
                 ret.push(sq)
             };
         }
         ret
+    }
+    pub fn get_moves(&self, side: Color) -> Vec<u64> {
+        self.bb_engine.get_moves(side)
     }
 }

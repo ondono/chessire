@@ -1,6 +1,7 @@
 pub mod attacks;
 pub mod constants;
 pub mod magics;
+pub mod moves;
 pub mod occupancy;
 pub mod tests;
 pub mod util;
@@ -30,6 +31,23 @@ pub const BLACK_ROOK: usize = 9;
 pub const BLACK_QUEEN: usize = 10;
 pub const BLACK_KING: usize = 11;
 
+pub const WHITE_PIECES: [usize; 6] = [
+    WHITE_PAWN,
+    WHITE_KNIGHT,
+    WHITE_BISHOP,
+    WHITE_ROOK,
+    WHITE_QUEEN,
+    WHITE_KING,
+];
+
+pub const BLACK_PIECES: [usize; 6] = [
+    BLACK_PAWN,
+    BLACK_KNIGHT,
+    BLACK_BISHOP,
+    BLACK_ROOK,
+    BLACK_QUEEN,
+    BLACK_KING,
+];
 pub const BOTH: usize = 2;
 
 #[derive(Debug, Clone)]
@@ -146,8 +164,37 @@ impl BitBoardEngine {
         }
     }
     #[inline]
-    pub fn get_moves() {
+    pub fn get_moves(&self, side: Color) -> Vec<u64> {
+        let moves = vec![];
+        if side == White {
+            // iterate over all WHITE piece types
+            for pieces in WHITE_PIECES {
+                let mut positions = self.current_position[pieces];
+                // iterate over all pieces of the given type
+                while positions.get() != 0 {
+                    if let Some(source_square) = positions.get_lsb() {
+                        match pieces {
+                            WHITE_PAWN => {}
+                            WHITE_KNIGHT => {}
+                            WHITE_BISHOP => {}
+                            WHITE_ROOK => {}
+                            WHITE_QUEEN => {}
+                            WHITE_KING => {}
+                            _ => (),
+                        }
+                        positions.reset_bit(source_square);
+                    }
+                }
+            }
+        } else {
+            // iterate over all BLACK piece types
+            for pieces in BLACK_PIECES {
+                let mut positions = self.current_position[pieces];
+            }
+        }
         //
+        //
+        moves
     }
 }
 
