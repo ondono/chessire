@@ -54,6 +54,49 @@ impl BitBoard {
     }
 }
 
+use std::ops::{BitAnd, BitOr, Not};
+
+impl BitAnd for BitBoard {
+    type Output = Self;
+    fn bitand(self, rhs: Self) -> Self::Output {
+        BitBoard::new(self.get() & rhs.get())
+    }
+}
+
+impl BitOr for BitBoard {
+    type Output = Self;
+    fn bitor(self, rhs: Self) -> Self::Output {
+        BitBoard::new(self.get() | rhs.get())
+    }
+}
+
+impl Not for BitBoard {
+    type Output = Self;
+    fn not(self) -> Self::Output {
+        BitBoard::new(!self.get())
+    }
+}
+
+impl Iterator for BitBoard {
+    type Item = usize;
+    fn next(&mut self) -> Option<Self::Item> {
+        let lsb = self.get_lsb()?;
+        self.reset_bit(lsb);
+        Some(lsb)
+    }
+}
+
+use super::Color;
+use std::ops::Index;
+
+impl Index<Color> for [BitBoard] {
+    type Output = BitBoard;
+
+    fn index(&self, color: Color) -> &Self::Output {
+        &self[color as usize]
+    }
+}
+
 use termion::color;
 
 impl fmt::Display for BitBoard {
@@ -113,6 +156,14 @@ impl fmt::Display for BitBoard {
     }
 }
 
+#[inline]
+pub fn index_from_bitmask(num: u64) -> usize {
+    let mut count = 0;
+    while (num & (1 << count) == 0) && (count < 64) {
+        count += 1;
+    }
+    count
+}
 #[inline]
 pub fn get_index(file: usize, rank: usize) -> usize {
     file + rank * 8

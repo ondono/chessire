@@ -96,6 +96,19 @@ pub const RANK_8: u64 = A8 | B8 | C8 | D8 | E8 | F8 | G8 | H8;
 pub const EDGE_OF_BOARD: u64 = FILE_A | FILE_H | RANK_1 | RANK_8;
 pub const INSIDE_OF_BOARD: u64 = !EDGE_OF_BOARD;
 
+// constant naming LUT
+#[rustfmt::skip]
+pub const SQUARE_NAMES: [&str; 64] = [
+    "A1","B1","C1","D1","E1","F1","G1","H1",
+    "A2","B2","C2","D2","E2","F2","G2","H2",
+    "A3","B3","C3","D3","E3","F3","G3","H3",
+    "A4","B4","C4","D4","E4","F4","G4","H4",
+    "A5","B5","C5","D5","E5","F5","G5","H5",
+    "A6","B6","C6","D6","E6","F6","G6","H6",
+    "A7","B7","C7","D7","E7","F7","G7","H7",
+    "A8","B8","C8","D8","E8","F8","G8","H8",
+];
+
 // BITBOARD ATTACKS LUTS
 //
 #[rustfmt::skip]
@@ -258,3 +271,37 @@ pub const ROOK_MAGIC_NUMBERS: [u64; 64] = [
     0x2006104900a0804,
     0x1004081002402,
 ];
+
+// bitboard state indexes
+pub const WHITE_PAWN: usize = 0;
+pub const WHITE_KNIGHT: usize = 1;
+pub const WHITE_BISHOP: usize = 2;
+pub const WHITE_ROOK: usize = 3;
+pub const WHITE_QUEEN: usize = 4;
+pub const WHITE_KING: usize = 5;
+
+pub const BLACK_PAWN: usize = 6;
+pub const BLACK_KNIGHT: usize = 7;
+pub const BLACK_BISHOP: usize = 8;
+pub const BLACK_ROOK: usize = 9;
+pub const BLACK_QUEEN: usize = 10;
+pub const BLACK_KING: usize = 11;
+
+pub const WHITE_PIECES: [usize; 6] = [
+    WHITE_PAWN,
+    WHITE_KNIGHT,
+    WHITE_BISHOP,
+    WHITE_ROOK,
+    WHITE_QUEEN,
+    WHITE_KING,
+];
+
+pub const BLACK_PIECES: [usize; 6] = [
+    BLACK_PAWN,
+    BLACK_KNIGHT,
+    BLACK_BISHOP,
+    BLACK_ROOK,
+    BLACK_QUEEN,
+    BLACK_KING,
+];
+pub const BOTH: usize = 2;

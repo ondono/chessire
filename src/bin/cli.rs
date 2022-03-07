@@ -5,13 +5,13 @@ use chessire::ChessireEngine;
 use std::io;
 use std::io::stdin;
 
-use chessire::engine::bitboard::attacks::{get_bishop_attack, get_queen_attack, get_rook_attack};
 use chessire::engine::bitboard::constants::*;
 use chessire::engine::bitboard::util::*;
 
-use chessire::engine::bitboard::attacks::{bishop_attacks_on_the_fly, rook_attacks_on_the_fly};
-
 use chessire::game::*;
+
+//const TEST_FEN: &str = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";
+const TEST_FEN: &str = "r7/8/8/4K3/8/8/8/7B w KQkq - 0 1";
 
 pub fn main() {
     terminal_clear();
@@ -24,6 +24,7 @@ pub fn main() {
     let mut input_string: String = "".to_string();
     input_string.clear();
 
+    game.apply_fen(TEST_FEN).ok();
     engine.set_position(game.clone());
 
     let mut attacked_by_white = vec![];
@@ -43,6 +44,8 @@ pub fn main() {
     game.board.add_selection(white_sel);
     game.board.add_selection(black_sel);
 
+    engine.get_moves(White);
+    //engine.get_moves(Black);
     //print board
     println!("{}", game.board);
 }

@@ -16,11 +16,12 @@ pub enum Piece {
     Pawn(Color),
 }
 
+use core::fmt::*;
 use Color::*;
 use Piece::*;
 
-impl core::fmt::Display for Piece {
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
+impl Display for Piece {
+    fn fmt(&self, f: &mut Formatter) -> Result {
         //let p = self.get_letter(); // enable this one if unicode gives trouble
         let color = if self.get_color() == White {
             color::Rgb(255, 255, 255)

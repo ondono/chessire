@@ -8,53 +8,22 @@ pub mod util;
 
 use super::board::*;
 use super::color::*;
+use super::moves::*;
 use super::piece::*;
+use crate::castling::CastlingRights;
 use crate::game::color::Color::{Black, White};
 use attacks::*;
 use constants::*;
 use occupancy::*;
 use util::*;
 
-// bitboard state indexes
-
-pub const WHITE_PAWN: usize = 0;
-pub const WHITE_KNIGHT: usize = 1;
-pub const WHITE_BISHOP: usize = 2;
-pub const WHITE_ROOK: usize = 3;
-pub const WHITE_QUEEN: usize = 4;
-pub const WHITE_KING: usize = 5;
-
-pub const BLACK_PAWN: usize = 6;
-pub const BLACK_KNIGHT: usize = 7;
-pub const BLACK_BISHOP: usize = 8;
-pub const BLACK_ROOK: usize = 9;
-pub const BLACK_QUEEN: usize = 10;
-pub const BLACK_KING: usize = 11;
-
-pub const WHITE_PIECES: [usize; 6] = [
-    WHITE_PAWN,
-    WHITE_KNIGHT,
-    WHITE_BISHOP,
-    WHITE_ROOK,
-    WHITE_QUEEN,
-    WHITE_KING,
-];
-
-pub const BLACK_PIECES: [usize; 6] = [
-    BLACK_PAWN,
-    BLACK_KNIGHT,
-    BLACK_BISHOP,
-    BLACK_ROOK,
-    BLACK_QUEEN,
-    BLACK_KING,
-];
-pub const BOTH: usize = 2;
-
 #[derive(Debug, Clone)]
 pub struct BitBoardEngine {
     pub attack_tables: AttackTables,
     pub current_position: [BitBoard; 12],
     pub occupancies: [BitBoard; 3],
+    pub enpassant: Option<usize>,
+    pub castling_rights: CastlingRights,
 }
 
 impl Default for BitBoardEngine {
@@ -62,7 +31,9 @@ impl Default for BitBoardEngine {
         let mut engine = Self {
             attack_tables: AttackTables::new(),
             current_position: [BitBoard::new(0); 12],
-            occupancies: [BitBoard::new(0xFFFFFFFFFFFFFFFF); 3],
+            occupancies: [BitBoard::new(0); 3],
+            enpassant: None,
+            castling_rights: CastlingRights::new(),
         };
         engine.init();
         engine
@@ -109,7 +80,13 @@ impl BitBoardEngine {
         self.occupancies[BOTH]
             .set(self.occupancies[White as usize].get() | self.occupancies[Black as usize].get());
     }
+    pub fn set_enpassant(&mut self, x: Option<usize>) {
+        self.enpassant = x;
+    }
 
+    pub fn set_castling_rights(&mut self, cr: CastlingRights) {
+        self.castling_rights = cr;
+    }
     #[inline]
     pub fn is_square_attacked_by(&self, sq: usize, col: Color) -> bool {
         match col {
@@ -164,36 +141,33 @@ impl BitBoardEngine {
         }
     }
     #[inline]
-    pub fn get_moves(&self, side: Color) -> Vec<u64> {
-        let moves = vec![];
-        if side == White {
-            // iterate over all WHITE piece types
-            for pieces in WHITE_PIECES {
-                let mut positions = self.current_position[pieces];
-                // iterate over all pieces of the given type
-                while positions.get() != 0 {
-                    if let Some(source_square) = positions.get_lsb() {
-                        match pieces {
-                            WHITE_PAWN => {}
-                            WHITE_KNIGHT => {}
-                            WHITE_BISHOP => {}
-                            WHITE_ROOK => {}
-                            WHITE_QUEEN => {}
-                            WHITE_KING => {}
-                            _ => (),
-                        }
-                        positions.reset_bit(source_square);
-                    }
+    pub fn get_moves(&self, side: Color) -> Vec<Move> {
+        let mut moves = vec![];
+
+        let piece_lists = match side {
+            White => WHITE_PIECES,
+            Black => BLACK_PIECES,
+        };
+
+        for pieces in piece_lists {
+            let mut positions = self.current_position[pieces];
+            while positions.get() != 0 {
+                if let Some(source_square) = positions.get_lsb() {
+                    let mut m = match pieces {
+                        WHITE_PAWN | BLACK_PAWN => get_pawn_moves(self, source_square, side),
+                        WHITE_KNIGHT | BLACK_KNIGHT => get_knight_moves(self, source_square, side),
+                        WHITE_BISHOP | BLACK_BISHOP => get_bishop_moves(self, source_square, side),
+                        WHITE_ROOK | BLACK_ROOK => get_rook_moves(self, source_square, side),
+                        WHITE_QUEEN | BLACK_QUEEN => get_queen_moves(self, source_square, side),
+                        WHITE_KING | BLACK_KING => get_king_moves(self, source_square, side),
+                        _ => vec![],
+                    };
+                    moves.append(&mut m);
+                    positions.reset_bit(source_square);
                 }
             }
-        } else {
-            // iterate over all BLACK piece types
-            for pieces in BLACK_PIECES {
-                let mut positions = self.current_position[pieces];
-            }
         }
-        //
-        //
+        print_movelist(&moves);
         moves
     }
 }
@@ -244,6 +218,7 @@ impl AttackTables {
         Self::default()
     }
 }
+
 /// Initialisators
 /// This functions initialise the attack tables when an engine is created
 

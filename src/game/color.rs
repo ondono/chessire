@@ -16,3 +16,15 @@ impl core::fmt::Display for Color {
         write!(f, "{}{}{}", color::Fg(col), letter, color::Fg(color::Reset))
     }
 }
+
+use Color::*;
+
+impl Color {
+    pub fn opponent(self) -> Color {
+        if self == White {
+            Black
+        } else {
+            White
+        }
+    }
+}

@@ -37,7 +37,7 @@ impl Coord {
             rank: t / 8,
         }
     }
-    fn to_usize(self) -> usize {
+    pub fn to_usize(self) -> usize {
         self.file + self.rank * 8
     }
 }
