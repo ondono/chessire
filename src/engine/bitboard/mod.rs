@@ -11,8 +11,8 @@ use super::color::*;
 use super::moves::*;
 use super::piece::*;
 use crate::castling::CastlingRights;
-use crate::game::color::Color::{Black, White};
 use attacks::*;
+use chessire_utils::color::Color::{Black, White};
 use constants::*;
 use occupancy::*;
 use util::*;
@@ -37,6 +37,16 @@ impl Default for BitBoardEngine {
         };
         engine.init();
         engine
+    }
+}
+
+use super::ChessEngine;
+impl ChessEngine for BitBoardEngine {
+    fn get_name() -> String {
+        "Chessire Bitboard".to_string()
+    }
+    fn get_author() -> String {
+        "Xavi Ondono".to_string()
     }
 }
 
@@ -71,14 +81,13 @@ impl BitBoardEngine {
         }
         for i in WHITE_PAWN..BLACK_PAWN {
             self.occupancies[White as usize]
-                .set(self.occupancies[White as usize].get() | self.current_position[i].get());
+                .set(self.occupancies[White].get() | self.current_position[i].get());
         }
         for i in BLACK_PAWN..(BLACK_KING + 1) {
             self.occupancies[Black as usize]
-                .set(self.occupancies[Black as usize].get() | self.current_position[i].get());
+                .set(self.occupancies[Black].get() | self.current_position[i].get());
         }
-        self.occupancies[BOTH]
-            .set(self.occupancies[White as usize].get() | self.occupancies[Black as usize].get());
+        self.occupancies[BOTH].set(self.occupancies[White].get() | self.occupancies[Black].get());
     }
     pub fn set_enpassant(&mut self, x: Option<usize>) {
         self.enpassant = x;

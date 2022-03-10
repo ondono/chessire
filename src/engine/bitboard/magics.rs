@@ -1,17 +1,15 @@
 use super::attacks::*;
 use super::BitBoard;
-use super::*;
-use super::{
-    generate_bishop_relevant_ocupancy, generate_rook_mask, generate_rook_relevant_ocupancy,
-    set_occupancy,
-};
+use super::{generate_bishop_relevant_ocupancy, generate_rook_relevant_ocupancy, set_occupancy};
 use rand::*;
 
+#[allow(dead_code)]
 fn generate_random_number() -> u64 {
     let mut rng = thread_rng();
     rng.gen_range(0..(u64::MAX & 0xFF00000000000000))
 }
 
+#[allow(dead_code)]
 fn find_magic_number(sq: usize, num_bits: usize, bishop: bool) -> u64 {
     let mut occupancies = [BitBoard::new(0); 4096];
     let mut attacks = [BitBoard::new(0); 4096];
@@ -69,11 +67,9 @@ fn find_magic_number(sq: usize, num_bits: usize, bishop: bool) -> u64 {
             if used_attacks[magic_index].get() == 0 {
                 // initialize used attacks
                 used_attacks[magic_index] = attacks[index];
-            } else {
-                if used_attacks[magic_index].get() != attacks[index].get() {
-                    // magic index doesn't work
-                    fail = true;
-                }
+            } else if used_attacks[magic_index].get() != attacks[index].get() {
+                // magic index doesn't work
+                fail = true;
             }
             if !fail {
                 return candidate;

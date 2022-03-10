@@ -1,7 +1,5 @@
 pub mod engine;
-pub mod game;
 
+pub use chessire_utils::*;
+pub use engine::bitboard::*;
 pub use engine::*;
-pub use game::*;
-
-// This should probably contain the library API right?

@@ -1,23 +1,21 @@
-use chessire::game::board::*;
-use chessire::game::color::Color::{Black, White};
+use chessire::engine::BitBoardEngine;
 use chessire::ChessGame;
-use chessire::ChessireEngine;
+//use chessire::ChessireEngine;
+use chessire_utils::board::*;
+use chessire_utils::color::Color::{Black, White};
 use std::io;
 use std::io::stdin;
 
-use chessire::engine::bitboard::constants::*;
-use chessire::engine::bitboard::util::*;
-
-use chessire::game::*;
-
 //const TEST_FEN: &str = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";
-const TEST_FEN: &str = "r7/8/8/4K3/8/8/8/7B w KQkq - 0 1";
+#[allow(dead_code)]
+const EMTPY_BOARD: &str = "8/8/8/8/8/8/8/8 w KQkq - 0 1";
+const TEST_FEN: &str = "rK5r/8/8/8/8/8/8/8 w KQkq - 0 1";
 
 pub fn main() {
     terminal_clear();
     println!("Running Chessire test CLI");
     let mut game = ChessGame::new();
-    let mut engine = ChessireEngine::new();
+    let mut engine = chessire::BitBoardEngine::new();
 
     //game.apply_fen("8/8/3p4/8/8/3P4/8/8 w KQkq - 0 1");
 

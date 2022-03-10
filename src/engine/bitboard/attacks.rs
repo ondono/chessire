@@ -1,6 +1,6 @@
 use super::constants::*;
 use super::*;
-use crate::game::color::Color::{self, Black, White};
+use chessire_utils::color::Color::{self, White};
 
 /////***************************/////
 /////*****  ATTACK GETTERS *****/////

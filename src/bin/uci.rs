@@ -1,6 +1,5 @@
-use chessire::ChessGame;
-use chessire::ChessireEngine;
-use std::io;
+//use chessire::ChessGame;
+//use chessire::ChessireEngine;
 //
 //const ENGINE_NAME: &'static str = "chers";
 //

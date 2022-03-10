@@ -14,3 +14,4 @@ termion = "*"
 rand = "*"
 criterion = "*"
 rayon = "1.5"
+chessire-utils = { path = "../chessire-utils"}

@@ -86,16 +86,16 @@ impl Iterator for BitBoard {
     }
 }
 
-use super::Color;
-use std::ops::Index;
-
-impl Index<Color> for [BitBoard] {
-    type Output = BitBoard;
-
-    fn index(&self, color: Color) -> &Self::Output {
-        &self[color as usize]
-    }
-}
+//use chessire_utils::color::*;
+//use std::ops::Index;
+//
+//impl Index<Color> for [BitBoard] {
+//    type Output = BitBoard;
+//
+//    fn index(&self, color: Color) -> &Self::Output {
+//        &self[color as usize]
+//    }
+//}
 
 use termion::color;
 

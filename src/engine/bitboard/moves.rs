@@ -211,8 +211,8 @@ pub fn get_pawn_moves(bb: &BitBoardEngine, source_square: usize, color: Color) -
     }
     // time to consider attacks
     // get valid attacks where there's an enemy piece
-    let mut attacks =
-        bb.attack_tables.pawn_attacks[side][source_square] & bb.occupancies[color.opponent()];
+    let mut attacks = bb.attack_tables.pawn_attacks[side][source_square]
+        & bb.occupancies[color.opponent() as usize];
 
     // loop over all set bits
     while let Some(target_square) = attacks.get_lsb() {
@@ -256,7 +256,7 @@ pub fn get_pawn_moves(bb: &BitBoardEngine, source_square: usize, color: Color) -
 pub fn get_knight_moves(bb: &BitBoardEngine, source_square: usize, color: Color) -> Vec<Move> {
     let free_squares = bb.attack_tables.knight_attacks[source_square] & !bb.occupancies[BOTH];
     let enemy_squares =
-        bb.attack_tables.knight_attacks[source_square] & bb.occupancies[color.opponent()];
+        bb.attack_tables.knight_attacks[source_square] & bb.occupancies[color.opponent() as usize];
 
     enemy_squares
         .into_iter()
@@ -276,7 +276,7 @@ pub fn get_bishop_moves(bb: &BitBoardEngine, source_square: usize, color: Color)
     let bishop_attacks = get_bishop_attack(&bb.attack_tables, source_square, bb.occupancies[BOTH]);
 
     let free_squares = bishop_attacks & !bb.occupancies[BOTH];
-    let enemy_squares = bishop_attacks & bb.occupancies[color.opponent()];
+    let enemy_squares = bishop_attacks & bb.occupancies[color.opponent() as usize];
 
     fill_movelist(
         Bishop(color),
@@ -290,7 +290,7 @@ pub fn get_rook_moves(bb: &BitBoardEngine, source_square: usize, color: Color) -
     let attacks = get_rook_attack(&bb.attack_tables, source_square, bb.occupancies[BOTH]);
 
     let free_squares = attacks & !bb.occupancies[BOTH];
-    let enemy_squares = attacks & bb.occupancies[color.opponent()];
+    let enemy_squares = attacks & bb.occupancies[color.opponent() as usize];
 
     fill_movelist(
         Rook(color),
@@ -304,7 +304,7 @@ pub fn get_queen_moves(bb: &BitBoardEngine, source_square: usize, color: Color) 
     let attacks = get_queen_attack(&bb.attack_tables, source_square, bb.occupancies[BOTH]);
 
     let free_squares = attacks & !bb.occupancies[BOTH];
-    let enemy_squares = attacks & bb.occupancies[color.opponent()];
+    let enemy_squares = attacks & bb.occupancies[color.opponent() as usize];
 
     fill_movelist(
         Queen(White),
@@ -346,7 +346,7 @@ pub fn get_king_moves(bb: &BitBoardEngine, source_square: usize, color: Color) -
     let attacks = bb.attack_tables.king_attacks[source_square];
 
     let free_squares = attacks & !bb.occupancies[BOTH];
-    let enemy_squares = attacks & bb.occupancies[color.opponent()];
+    let enemy_squares = attacks & bb.occupancies[color.opponent() as usize];
 
     fill_movelist(
         King(White),
@@ -398,11 +398,22 @@ fn fill_movelist(
     free_squares: BitBoard,
     enemy_squares: BitBoard,
     source_square: usize,
-    color: Color,
+    _color: Color,
 ) -> Vec<Move> {
     enemy_squares
         .into_iter()
-        .map(|target| Move::new_bishop_move(source_square, target, color, true))
+        .map(|target| {
+            Move::new(
+                source_square,
+                target,
+                piece,
+                None,
+                true,
+                false,
+                false,
+                false,
+            )
+        })
         .chain(free_squares.into_iter().map(|target| {
             Move::new(
                 source_square,
