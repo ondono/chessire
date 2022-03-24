@@ -1,9 +1,12 @@
 use crate::*;
-use core::ops::Range;
+use chessire_utils::*;
+use itertools::Itertools;
+use std::ops::Range;
 
-pub fn perft(depth: usize, range: Range<usize>) {
-    let mut game = ChessGame::new();
-
+pub fn perft<T>(depth: usize, tests_range: Range<usize>, engine: &mut T)
+where
+    T: ChessEngine,
+{
     let positions = vec![POSITION1, POSITION2, POSITION3, POSITION4, POSITION5];
     let pos_res = vec![
         POS1_PERFT_RESULTS,
@@ -13,33 +16,41 @@ pub fn perft(depth: usize, range: Range<usize>) {
         POS5_PERFT_RESULTS,
     ];
 
-    let count_pos = positions.iter().count();
-    let count_pos_res = pos_res.iter().count();
+    let count_pos = positions.len();
+    let count_pos_res = pos_res.len();
 
     let count = usize::min(count_pos, count_pos_res);
 
-    for test_case in range {
+    for test_case in tests_range {
         if test_case > count - 1 {
             continue;
         }
-        println!("Starting validation of test position {}", test_case + 1);
-        game.set_position_from_fen(positions[test_case]);
+        println!(
+            "Starting validation of test position {}: {}",
+            test_case + 1,
+            positions[test_case]
+        );
+
+        let mut game = ChessGame::new();
+        game.apply_fen(positions[test_case])
+            .unwrap_or_else(|_| panic!("error while parsing FEN string {}", positions[test_case]));
         for ply in 1..depth + 1 {
             use std::time::Instant;
             use termion::color;
-
             let now = Instant::now();
-            let test_results = game.move_testing(ply);
+            let mut nodes = 0;
+            engine.perft(ply, &mut nodes, false);
             let elapsed = now.elapsed().as_millis();
             let expected_res = (pos_res[test_case])[ply - 1].get_nodes();
-            if test_results == expected_res {
+
+            if nodes == expected_res {
                 println!(
                     "> {}Depth:{}{} ply\tNumber of positions:{}{:>9}{}\ttime:{:>6}ms",
                     color::Fg(color::Green),
                     color::Fg(color::Reset),
                     ply,
                     color::Fg(color::Red),
-                    test_results,
+                    nodes,
                     color::Fg(color::Reset),
                     elapsed,
                 );
@@ -50,12 +61,12 @@ pub fn perft(depth: usize, range: Range<usize>) {
                     color::Fg(color::Reset),
                     ply,
                     color::Fg(color::Red),
-                    test_results,
+                    nodes,
                     color::Fg(color::Reset),
                     color::Fg(color::Red),
                     expected_res,
                     color::Fg(color::Reset),
-                    test_results as i128 - expected_res as i128,
+                    nodes as i128 - expected_res as i128,
                     elapsed,
                 );
             }
@@ -63,39 +74,13 @@ pub fn perft(depth: usize, range: Range<usize>) {
     }
 }
 
-pub fn perft_search(game: &mut ChessGame, depth: usize) -> Vec<(Move, u128)> {
-    // first make a copy of the game state
-    let mut saved_state = game.clone();
-    let mut trace = vec![];
-    // then simulate forwards and evaluate
-    let mut moves = Vec::with_capacity(1000);
-    for piece_entry in &saved_state.piece_lists[saved_state.side_to_move as usize] {
-        moves.append(&mut get_piece_pseudolegal_moves(
-            //TODO: this cloning is probably a bad idea I need to solve!
-            saved_state.clone(),
-            *piece_entry,
-        ));
-    }
-
-    for mov in moves {
-        saved_state.make_move(mov);
-        let phase_moves = saved_state.move_testing(depth - 1);
-        trace.push((mov, phase_moves));
-        saved_state.unmake_move();
-    }
-    trace
-}
-
-pub fn perft_moves(game: &mut ChessGame, depth: usize) {
-    let test_results = perft_search(game, depth);
-
-    let mut a = 0;
-    for (m, i) in test_results.clone() {
-        a += i;
-        println!("{}: {}", m, i);
-    }
-
-    println!("Nodes searched: {}", a);
+pub fn perft_details<T>(depth: usize, engine: &mut T)
+where
+    T: ChessEngine,
+{
+    let mut nodes = 0;
+    engine.perft(depth, &mut nodes, true);
+    println!("Nodes searched: {}", nodes);
 }
 
 pub struct PerfResults {
@@ -150,7 +135,7 @@ pub const POSITION4: &str = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1R
 pub const POSITION5: &str = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8  ";
 
 /** Depth Nodes Captures Enpassant Castles Promotions Checks DiscoveryChecks DoubleChecks Checkmates **/
-static POS1_PERFT_RESULTS: &'static [PerfResults] = &[
+static POS1_PERFT_RESULTS: &[PerfResults] = &[
     PerfResults::new(1, 20, 0, 0, 0, 0, 0, 0, 0, 0),
     PerfResults::new(2, 400, 0, 0, 0, 0, 0, 0, 0, 0),
     PerfResults::new(3, 8902, 0, 0, 0, 0, 0, 0, 0, 0),
@@ -164,7 +149,7 @@ static POS1_PERFT_RESULTS: &'static [PerfResults] = &[
     PerfResults::new(11, 2439530234167, 0, 0, 0, 0, 0, 0, 0, 0),
 ];
 
-static POS2_PERFT_RESULTS: &'static [PerfResults] = &[
+static POS2_PERFT_RESULTS: &[PerfResults] = &[
     PerfResults::new(1, 48, 0, 0, 0, 0, 0, 0, 0, 0),
     PerfResults::new(2, 2039, 0, 0, 0, 0, 0, 0, 0, 0),
     PerfResults::new(3, 97862, 0, 0, 0, 0, 0, 0, 0, 0),
@@ -173,7 +158,7 @@ static POS2_PERFT_RESULTS: &'static [PerfResults] = &[
     PerfResults::new(6, 8031647685, 0, 0, 0, 0, 0, 0, 0, 0),
 ];
 
-static POS3_PERFT_RESULTS: &'static [PerfResults] = &[
+static POS3_PERFT_RESULTS: &[PerfResults] = &[
     PerfResults::new(1, 14, 0, 0, 0, 0, 0, 0, 0, 0),
     PerfResults::new(2, 191, 0, 0, 0, 0, 0, 0, 0, 0),
     PerfResults::new(3, 2812, 0, 0, 0, 0, 0, 0, 0, 0),
@@ -184,7 +169,7 @@ static POS3_PERFT_RESULTS: &'static [PerfResults] = &[
     PerfResults::new(8, 3009794393, 0, 0, 0, 0, 0, 0, 0, 0),
 ];
 
-static POS4_PERFT_RESULTS: &'static [PerfResults] = &[
+static POS4_PERFT_RESULTS: &[PerfResults] = &[
     PerfResults::new(1, 6, 0, 0, 0, 0, 0, 0, 0, 0),
     PerfResults::new(2, 264, 0, 0, 0, 0, 0, 0, 0, 0),
     PerfResults::new(3, 9467, 0, 0, 0, 0, 0, 0, 0, 0),
@@ -193,7 +178,7 @@ static POS4_PERFT_RESULTS: &'static [PerfResults] = &[
     PerfResults::new(6, 15833292, 0, 0, 0, 0, 0, 0, 0, 0),
 ];
 
-static POS5_PERFT_RESULTS: &'static [PerfResults] = &[
+static POS5_PERFT_RESULTS: &[PerfResults] = &[
     PerfResults::new(1, 44, 0, 0, 0, 0, 0, 0, 0, 0),
     PerfResults::new(2, 1486, 0, 0, 0, 0, 0, 0, 0, 0),
     PerfResults::new(3, 62379, 0, 0, 0, 0, 0, 0, 0, 0),

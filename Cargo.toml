@@ -2,16 +2,26 @@
 name = "chessire"
 version = "0.1.0"
 edition = "2018"
-default-run = "cli"
+#default-run = "cli"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[[bin]]
-name = "cli"
-path = "src/bin/cli.rs"
+#[[bin]]
+#name = "cli"
+#path = "src/bin/cli.rs"
 
 [dependencies]
+# TUI crates
+clap = { version = "3", features = ["derive"] }
 termion = "*"
+
+# Engine
 rand = "*"
-criterion = "*"
 rayon = "1.5"
+itertools = "0.10"
+
+# Benchmarking and profiling
+criterion = "*"
+
+# Own dependencies
 chessire-utils = { path = "../chessire-utils"}
+anyhow = "*"

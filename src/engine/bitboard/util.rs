@@ -52,6 +52,9 @@ impl BitBoard {
             None
         }
     }
+    pub fn clear(&mut self) {
+        self.0 = 0;
+    }
 }
 
 use std::ops::{BitAnd, BitOr, Not};
@@ -85,17 +88,6 @@ impl Iterator for BitBoard {
         Some(lsb)
     }
 }
-
-//use chessire_utils::color::*;
-//use std::ops::Index;
-//
-//impl Index<Color> for [BitBoard] {
-//    type Output = BitBoard;
-//
-//    fn index(&self, color: Color) -> &Self::Output {
-//        &self[color as usize]
-//    }
-//}
 
 use termion::color;
 
