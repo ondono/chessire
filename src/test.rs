@@ -1,8 +1,8 @@
 use crate::*;
 use chessire_utils::*;
-use itertools::Itertools;
 use std::ops::Range;
 
+#[inline]
 pub fn perft<T>(depth: usize, tests_range: Range<usize>, engine: &mut T)
 where
     T: ChessEngine,
@@ -34,6 +34,8 @@ where
         let mut game = ChessGame::new();
         game.apply_fen(positions[test_case])
             .unwrap_or_else(|_| panic!("error while parsing FEN string {}", positions[test_case]));
+        println!("{}", game);
+        engine.set_position(game);
         for ply in 1..depth + 1 {
             use std::time::Instant;
             use termion::color;
@@ -69,6 +71,8 @@ where
                     nodes as i128 - expected_res as i128,
                     elapsed,
                 );
+                // stop at first error
+                break;
             }
         }
     }
@@ -129,8 +133,8 @@ impl PerfResults {
 /* PERFT CONSTANTS */
 
 pub const POSITION1: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 ";
-pub const POSITION2: &str = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
-pub const POSITION3: &str = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - ";
+pub const POSITION2: &str = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";
+pub const POSITION3: &str = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1 ";
 pub const POSITION4: &str = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1";
 pub const POSITION5: &str = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8  ";
 

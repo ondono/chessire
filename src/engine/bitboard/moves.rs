@@ -47,7 +47,6 @@ pub fn get_pawn_moves(bb: &BitBoardEngine, source_square: usize, color: Color) -
         moves.push(Move::new_pawn_push(color, source_square));
     }
     //*** CAPTURES ***//
-
     if let Some(enpassant_target) = bb.state.enpassant {
         // and with the attack tables of the current pawn
         if (BitBoard::new_single_bit(enpassant_target)
@@ -185,37 +184,84 @@ pub fn get_king_moves(bb: &BitBoardEngine, source_square: usize, color: Color) -
     let free_squares = attacks & !bb.state.occupancies[BOTH];
     let enemy_squares = attacks & bb.state.occupancies[color.opponent() as usize];
 
-    let moves = fill_movelist(
-        King(White),
+    let mut moves = fill_movelist(
+        King(color),
         free_squares,
         enemy_squares,
         source_square,
         color,
     );
 
-    //TODO: Add castling moves
     if color == White {
+        // White castling moves
         if bb.state.castling_rights.white_king_side
             && is_empty(bb, index_from_bitmask(F1))
             && is_empty(bb, index_from_bitmask(G1))
             && !bb.is_square_attacked_by(index_from_bitmask(F1), color.opponent())
             && !bb.is_square_attacked_by(index_from_bitmask(G1), color.opponent())
+            // if the king is in check, no castling!
+            && !bb.is_square_attacked_by(index_from_bitmask(E1), color.opponent())
         {
-            println!("white king side castling");
+            let mov = Move::new_castling(
+                Coord::from_tile(index_from_bitmask(E1)),
+                Coord::from_tile(index_from_bitmask(G1)),
+                color,
+            );
+            moves.push(mov);
         }
         if bb.state.castling_rights.white_queen_side
             && is_empty(bb, index_from_bitmask(B1))
             && is_empty(bb, index_from_bitmask(C1))
             && is_empty(bb, index_from_bitmask(D1))
-            && !bb.is_square_attacked_by(index_from_bitmask(B1), color.opponent())
+//            && !bb.is_square_attacked_by(index_from_bitmask(B1), color.opponent())
             && !bb.is_square_attacked_by(index_from_bitmask(C1), color.opponent())
-            && !bb.is_square_attacked_by(index_from_bitmask(D1), color.opponent())
+            && !bb.is_square_attacked_by(index_from_bitmask(D1), color.opponent()) 
+            // if the king is in check, no castling!
+            && !bb.is_square_attacked_by(index_from_bitmask(E1), color.opponent())
         {
-            println!("white queen side castling");
+            let mov = Move::new_castling(
+                Coord::from_tile(index_from_bitmask(E1)),
+                Coord::from_tile(index_from_bitmask(C1)),
+                color,
+            );
+            moves.push(mov);
         }
     } else {
-        if bb.state.castling_rights.black_king_side {}
-        if bb.state.castling_rights.black_queen_side {}
+        if bb.state.castling_rights.black_king_side
+            && is_empty(bb, index_from_bitmask(F8))
+            && is_empty(bb, index_from_bitmask(G8))
+            && !bb.is_square_attacked_by(index_from_bitmask(F8), color.opponent())
+            && !bb.is_square_attacked_by(index_from_bitmask(G8), color.opponent())
+            // if the king is in check, no castling!
+            && !bb.is_square_attacked_by(index_from_bitmask(E8), color.opponent())
+ 
+        {
+            //CHECK: manual move from e8 to g8
+            let mov = Move::new_castling(
+                Coord::from_tile(index_from_bitmask(E8)),
+                Coord::from_tile(index_from_bitmask(G8)),
+                color,
+            );
+            moves.push(mov);
+        }
+        if bb.state.castling_rights.black_queen_side
+            && is_empty(bb, index_from_bitmask(B8))
+            && is_empty(bb, index_from_bitmask(C8))
+            && is_empty(bb, index_from_bitmask(D8))
+//            && !bb.is_square_attacked_by(index_from_bitmask(B8), color.opponent())
+            && !bb.is_square_attacked_by(index_from_bitmask(C8), color.opponent())
+            && !bb.is_square_attacked_by(index_from_bitmask(D8), color.opponent())
+            // if the king is in check, no castling!
+            && !bb.is_square_attacked_by(index_from_bitmask(E8), color.opponent())
+ 
+        {
+            let mov = Move::new_castling(
+                Coord::from_tile(index_from_bitmask(E8)),
+                Coord::from_tile(index_from_bitmask(C8)),
+                color,
+            );
+            moves.push(mov);
+        }
     }
 
     moves

@@ -1,59 +1,145 @@
 #[cfg(test)]
 mod test_stockfish {
     use anyhow::{anyhow, Result};
+    use chessire::ChessEngine;
     use std::io::Write;
     use std::process::{Command, Stdio};
 
-    use std::collections::HashSet;
-
-    #[derive(Debug, PartialEq, Eq, Hash, Clone)]
-    pub struct MoveRecord {
-        name: String,
-        count: u128,
-    }
+    use chessire_utils::moves::MoveRecord;
+    use std::collections::HashMap;
 
     #[test]
     fn compare_peft_results_with_stockfish() {
-        let depth = 3;
-        let moves = vec![];
-
-        // get the list from stockfish
-        let stockfish_records: HashSet<MoveRecord> = if let Ok(x) = stockfish_perft(depth, moves) {
-            x.into_iter().collect()
-        } else {
-            HashSet::new()
-        };
-
-        // create a list of moves with the engine
-        //let chessire_records: HashSet<MoveRecord> = vec![].into_iter().collect();
-        let missing_move = stockfish_records.clone().drain().next().unwrap();
-        let mut chessire_records = stockfish_records.clone();
-
-        chessire_records.remove(&missing_move);
-
-        let missing = stockfish_records
-            .difference(&chessire_records)
-            .collect::<HashSet<&MoveRecord>>();
-
-        let incorrect = chessire_records
-            .difference(&stockfish_records)
-            .collect::<HashSet<&MoveRecord>>();
-
-        println!("Missing moves:");
-        for record in &missing {
-            println!("{:?}", record);
-        }
-
-        println!("Erroneous moves:");
-        for record in &incorrect {
-            println!("{:?}", record);
-        }
-        println!("Everything was okay?");
-        assert!(missing.is_empty() && incorrect.is_empty());
+        // set up the positions here
+        const FEN: &str = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8";
+        //const FEN: &str = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";
+        compare_moves(5, vec![], FEN);
     }
 
-    fn stockfish_perft(depth: usize, moves: Vec<String>) -> Result<Vec<MoveRecord>> {
+    fn compare_moves(depth: usize, moves: Vec<String>, starting_fen: &str) {
+        if depth > 0 {
+            print!("Examining movelist:");
+            for m in &moves {
+                print!("{} ", m);
+            }
+            println!();
+
+            let mut stockfish_records: HashMap<&str, u128> = HashMap::new();
+
+            let stockfish_output = stockfish_perft(depth, &moves, starting_fen).unwrap();
+
+            stockfish_output.iter().for_each(|record| {
+                *stockfish_records
+                    .entry(&*record.name)
+                    .or_insert(record.count) += 0
+            });
+
+            use chessire::BitBoardEngine;
+            let mut game = chessire::ChessGame::new();
+            game.apply_fen(starting_fen).unwrap();
+            let mut engine = BitBoardEngine::new_engine(game);
+
+            // create a list of moves with our engine
+            let mut chessire_records: HashMap<&str, u128> = HashMap::new();
+            let chessire_output = engine.perft_get_records(depth, &moves).unwrap();
+
+            chessire_output.iter().for_each(|record| {
+                *chessire_records
+                    .entry(&*record.name)
+                    .or_insert(record.count) += 0
+            });
+
+            use itertools::Itertools;
+
+            for record in &stockfish_records {
+                if let Some(chessire_count) = chessire_records.get(&*record.0) {
+                    if *chessire_count != *record.1 {
+                        print!("> found mismatch on move:\t");
+                        // push move to the moves list
+                        let mut next_moves = moves.clone();
+                        next_moves.push(record.0.to_string());
+                        // call this function recursively
+                        for m in &next_moves {
+                            print!("{}\t", m);
+                        }
+                        println!();
+                        println!("Stockfish:{}\tChessire:{}", record.1, chessire_count);
+                        println!("Stockfish next move count: {}", stockfish_records.len());
+                        for r in stockfish_records.keys().sorted() {
+                            print!("{}\t", r);
+                        }
+                        println!();
+                        println!("Chessire next move count: {}", chessire_records.len());
+                        for r in chessire_records.keys().sorted() {
+                            print!("{}\t", r);
+                        }
+                        println!();
+                        compare_moves(depth - 1, next_moves, starting_fen);
+                    }
+                } else {
+                    println!("Error: Move missing!");
+                    print!("Movelist: ");
+                    for m in &moves {
+                        print!("{} ", m);
+                    }
+                    println!();
+                    println!("{} was missing!", record.0);
+                    panic!();
+                }
+            }
+
+            for record in &chessire_records {
+                if let Some(stockfish_count) = stockfish_records.get(&*record.0) {
+                    if *stockfish_count != *record.1 {
+                        // push move to the moves list
+                        let mut next_moves = moves.clone();
+                        next_moves.push(record.0.to_string());
+                        // call this function recursively
+                        print!("> found mismatch on move:\t");
+                        for m in &next_moves {
+                            print!("{}\t", m);
+                        }
+                        println!();
+                        println!("Stockfish:{}\tChessire:{}", stockfish_count, record.1);
+                        println!("Stockfish next move count: {}", stockfish_records.len());
+                        for r in stockfish_records.keys().sorted() {
+                            print!("{}\t", r);
+                        }
+                        println!();
+                        println!("Chessire next move count: {}", chessire_records.len());
+                        for r in chessire_records.keys().sorted() {
+                            print!("{}\t", r);
+                        }
+                        println!();
+                        compare_moves(depth - 1, next_moves, starting_fen);
+                    }
+                } else {
+                    println!("Error: Invalid Move!");
+                    print!("Movelist: ");
+                    for m in &moves {
+                        print!("{} ", m);
+                    }
+                    println!("{}", record.0);
+                    panic!();
+                }
+            }
+        } else {
+            println!("ended evaluation of line:");
+            for m in &moves {
+                print!("{} ", m);
+            }
+            panic!();
+        }
+    }
+
+    fn stockfish_perft(
+        depth: usize,
+        moves: &Vec<String>,
+        starting_fen: &str,
+    ) -> Result<Vec<MoveRecord>> {
         // call stockfish
+        // this technically works with any engine, but the parsing is done specifically for
+        // stockfish
         let mut child = Command::new("stockfish")
             .stdin(Stdio::piped())
             .stderr(Stdio::piped())
@@ -62,14 +148,22 @@ mod test_stockfish {
             .unwrap();
 
         // create the command to run the perft
-        let mut command = "position startpos\n".to_string();
+        let mut command = "position fen ".to_string();
 
-        for m in moves {
-            command.push_str(&m);
+        // apply a nice fen starting position
+        command.push_str(starting_fen);
+
+        // if the move string isn't empty, append the list of moves
+        if !moves.is_empty() {
+            command.push_str(" moves ");
+            for m in moves {
+                command.push_str(m);
+                command.push(' ');
+            }
         }
-
+        command.push('\n');
+        // Append the perft command
         command.push_str(format!("go perft {}\n", depth).as_str());
-
         // run the whole thing and capture output
         child
             .stdin

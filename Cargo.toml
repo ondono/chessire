@@ -25,3 +25,10 @@ criterion = "*"
 # Own dependencies
 chessire-utils = { path = "../chessire-utils"}
 anyhow = "*"
+
+[[bench]]
+name = "perft_benchmark"
+harness = false
+
+[profile.release]
+debug=true

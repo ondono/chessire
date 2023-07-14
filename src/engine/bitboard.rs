@@ -11,12 +11,20 @@ use super::color::*;
 use super::piece::*;
 use crate::castling::CastlingRights;
 use crate::engine::bitboard::moves::*;
+use anyhow::Result;
 use attacks::*;
 use chessire_utils::color::Color::{Black, White};
 use chessire_utils::moves::*;
 use constants::*;
 use occupancy::*;
 use util::*;
+
+// Some flags to speed up computation
+pub struct PositionFlags {
+    pub in_check: bool,
+    pub in_double_check: bool,
+    pub pins_exist: bool,
+}
 
 #[derive(Debug, Copy, Clone)]
 pub struct BitBoardState {
@@ -27,6 +35,14 @@ pub struct BitBoardState {
     pub halfmove_clock: u32,
     pub fullmove_clock: u32,
     pub side_to_move: Color,
+    //// optimizations
+    pub squares_attacked: [BitBoard; 2],
+    pub pin_maps: [BitBoard; 2],
+    //// they can't never be more than 32 pieces in the board!
+    pub white_piece_lists: [(Option<Piece>, usize); 16],
+    pub black_piece_lists: [(Option<Piece>, usize); 16],
+    //
+    //  pub
 }
 
 impl Default for BitBoardState {
@@ -39,6 +55,10 @@ impl Default for BitBoardState {
             halfmove_clock: 0,
             fullmove_clock: 1,
             side_to_move: White,
+            squares_attacked: [BitBoard::new(0); 2],
+            pin_maps: [BitBoard::new(0); 2],
+            white_piece_lists: [(None, 0); 16],
+            black_piece_lists: [(None, 0); 16],
         }
     }
 }
@@ -85,16 +105,18 @@ impl BitBoardState {
     }
 }
 
+use std::rc::Rc;
+
 #[derive(Debug, Clone)]
 pub struct BitBoardEngine {
-    pub attack_tables: AttackTables,
+    pub attack_tables: Rc<AttackTables>,
     pub state: BitBoardState,
 }
 
 impl Default for BitBoardEngine {
     fn default() -> Self {
         let mut engine = Self {
-            attack_tables: AttackTables::new(),
+            attack_tables: Rc::new(AttackTables::new()),
             state: BitBoardState::new(),
         };
         engine.init();
@@ -125,6 +147,40 @@ impl ChessEngine for BitBoardEngine {
             None
         };
     }
+    fn set_start_position(&mut self) {
+        let g = ChessGame::new();
+        self.set_position(g);
+    }
+    fn peek_piece(&self, p: Coord) -> Option<Piece> {
+        if self.state.occupancies[BOTH].get_bit(p.to_usize()) {
+            use chessire_utils::piece::Piece::*;
+
+            let mut n = 0;
+            for (i, bitboard) in self.state.current_position.iter().enumerate() {
+                if bitboard.get_bit(p.to_usize()) {
+                    n = i;
+                }
+            }
+            let piece = match n {
+                WHITE_KING => King(White),
+                WHITE_QUEEN => Queen(White),
+                WHITE_ROOK => Rook(White),
+                WHITE_BISHOP => Bishop(White),
+                WHITE_KNIGHT => Knight(White),
+                WHITE_PAWN => Pawn(White),
+                BLACK_KING => King(Black),
+                BLACK_QUEEN => Queen(Black),
+                BLACK_ROOK => Rook(Black),
+                BLACK_BISHOP => Bishop(Black),
+                BLACK_KNIGHT => Knight(Black),
+                BLACK_PAWN => Pawn(Black),
+                _ => Pawn(White),
+            };
+            Some(piece)
+        } else {
+            None
+        }
+    }
     #[inline]
     fn get_moves(&self, side: Color) -> Vec<Move> {
         self._get_moves(side)
@@ -137,8 +193,14 @@ impl ChessEngine for BitBoardEngine {
         "Xavi Ondono".to_string()
     }
     fn get_internal_position(&self) -> ChessGame {
-        ChessGame::new()
+        self.state.get_game()
     }
+
+    #[inline]
+    fn test_move_legality(&self, mov: Move) -> Result<(), ()> {
+        self.clone().make_move(mov)
+    }
+
     #[inline]
     fn make_move(&mut self, mov: Move) -> Result<(), ()> {
         // preserve board state
@@ -152,6 +214,45 @@ impl ChessEngine for BitBoardEngine {
         // move the piece
         self.state.current_position[piece_index].reset_bit(source);
         self.state.current_position[piece_index].set_bit(target);
+
+        // move the piece in the list
+        // if side == White {
+        //     // find the moving piece
+        //     let index = self
+        //         .state
+        //         .white_piece_lists
+        //         .iter()
+        //         .position(|&x| x == (Some(mov.piece), source))
+        //         .unwrap();
+        //     self.state.white_piece_lists[index] = (Some(mov.piece), target);
+
+        //     if let Some(index) = self
+        //         .state
+        //         .black_piece_lists
+        //         .iter()
+        //         .position(|&x| x.1 == (target))
+        //     {
+        //         self.state.black_piece_lists[index] = (None, target);
+        //     }
+        // } else {
+        //     // find the moving piece
+        //     let index = self
+        //         .state
+        //         .black_piece_lists
+        //         .iter()
+        //         .position(|&x| x == (Some(mov.piece), source))
+        //         .unwrap();
+        //     self.state.black_piece_lists[index] = (Some(mov.piece), target);
+
+        //     if let Some(index) = self
+        //         .state
+        //         .white_piece_lists
+        //         .iter()
+        //         .position(|&x| x.1 == (target))
+        //     {
+        //         self.state.white_piece_lists[index] = (None, target);
+        //     }
+        // }
 
         // handle capture moves
         if mov.capture {
@@ -191,11 +292,13 @@ impl ChessEngine for BitBoardEngine {
         if mov.double_push {
             // set enpassant square
             if side == White {
-                self.state.enpassant = Some(mov.target.next_up().unwrap_or(mov.target).to_usize());
-            } else {
                 self.state.enpassant =
                     Some(mov.target.next_down().unwrap_or(mov.target).to_usize());
+            } else {
+                self.state.enpassant = Some(mov.target.next_up().unwrap_or(mov.target).to_usize());
             }
+        } else {
+            self.state.enpassant = None;
         }
 
         // handle castling
@@ -208,22 +311,26 @@ impl ChessEngine for BitBoardEngine {
                 // C1: White castling queen side
                 2 => {
                     self.state.current_position[WHITE_ROOK].reset_bit(index_from_bitmask(A1)); // a1
-                    self.state.current_position[WHITE_ROOK].reset_bit(index_from_bitmask(D1));
+                    self.state.current_position[WHITE_ROOK].set_bit(index_from_bitmask(D1));
+                    self.state.castling_rights.white_queen_side = false;
                 }
-                // G1
+                // G1: White castling king side
                 6 => {
                     self.state.current_position[WHITE_ROOK].reset_bit(index_from_bitmask(H1)); // a1
-                    self.state.current_position[WHITE_ROOK].reset_bit(index_from_bitmask(F1));
+                    self.state.current_position[WHITE_ROOK].set_bit(index_from_bitmask(F1));
+                    self.state.castling_rights.white_king_side = false;
                 }
                 // C8
                 58 => {
-                    self.state.current_position[WHITE_ROOK].reset_bit(index_from_bitmask(A8)); // a1
-                    self.state.current_position[WHITE_ROOK].reset_bit(index_from_bitmask(D8));
+                    self.state.current_position[BLACK_ROOK].reset_bit(index_from_bitmask(A8)); // a1
+                    self.state.current_position[BLACK_ROOK].set_bit(index_from_bitmask(D8));
+                    self.state.castling_rights.black_queen_side = false;
                 }
                 // G8
                 62 => {
-                    self.state.current_position[WHITE_ROOK].reset_bit(index_from_bitmask(H8)); // a1
-                    self.state.current_position[WHITE_ROOK].reset_bit(index_from_bitmask(F8));
+                    self.state.current_position[BLACK_ROOK].reset_bit(index_from_bitmask(H8)); // a1
+                    self.state.current_position[BLACK_ROOK].set_bit(index_from_bitmask(F8));
+                    self.state.castling_rights.black_king_side = false;
                 }
                 // should never happen!
                 _ => panic!("Castling move with wrong target square"),
@@ -243,12 +350,12 @@ impl ChessEngine for BitBoardEngine {
                 63 => self.state.castling_rights.black_king_side = false,
                 // possibly moving white king
                 4 => {
-                    self.state.castling_rights.white_queen_side = false;
+                    self.state.castling_rights.white_king_side = false;
                     self.state.castling_rights.white_queen_side = false;
                 }
                 // possibly mobing black king
                 60 => {
-                    self.state.castling_rights.black_queen_side = false;
+                    self.state.castling_rights.black_king_side = false;
                     self.state.castling_rights.black_queen_side = false;
                 }
                 // for all other squares, do nothing
@@ -297,6 +404,81 @@ impl ChessEngine for BitBoardEngine {
             Err(())
         }
     }
+
+    fn evaluate(&self) -> f32 {
+        let mut position_value = 0.0;
+        // for each bitboard
+        for (i, piece) in self.state.current_position.iter().enumerate() {
+            // loop over all pieces in the current bitboard
+            let mut p = *piece;
+            while let Some(sq) = p.get_lsb() {
+                position_value += match i {
+                    // PAWN scores
+                    WHITE_PAWN => PAWN_VALUE + WHITE_PAWN_SCORES[sq] as f32,
+                    BLACK_PAWN => -PAWN_VALUE - BLACK_PAWN_SCORES[sq] as f32,
+                    // KNIGHT scores
+                    WHITE_KNIGHT => KNIGHT_VALUE + KNIGHT_SCORES[sq] as f32,
+                    BLACK_KNIGHT => -KNIGHT_VALUE - KNIGHT_SCORES[sq] as f32,
+                    // BISHOP scores
+                    WHITE_BISHOP => BISHOP_VALUE + BISHOP_SCORES[sq] as f32,
+                    BLACK_BISHOP => -BISHOP_VALUE - BISHOP_SCORES[sq] as f32,
+                    // ROOK scores
+                    WHITE_ROOK => ROOK_VALUE + ROOK_SCORES[sq] as f32,
+                    BLACK_ROOK => -ROOK_VALUE - ROOK_SCORES[sq] as f32,
+                    // QUEEN doesn't get a positional score
+                    WHITE_QUEEN => QUEEN_VALUE,
+                    BLACK_QUEEN => -QUEEN_VALUE,
+                    // KING scores
+                    WHITE_KING => KING_VALUE + KING_SCORES[sq] as f32,
+                    BLACK_KING => -KING_VALUE - KING_SCORES[sq] as f32,
+                    _ => 0.0,
+                };
+                p.reset_bit(sq);
+            }
+        }
+        position_value
+    }
+
+    fn search_best_move(&self, depth: usize) {
+        // time to minimax
+    }
+
+    fn get_best_move(&self) -> Move {
+        //placeholder
+        Move::new(
+            Coord::from_tile(index_from_bitmask(E2)),
+            Coord::from_tile(index_from_bitmask(E4)),
+            Piece::Pawn(White),
+            None,
+        )
+    }
+
+    fn play_best_move(&mut self) {
+        let mut move_scores: Vec<(Move, f32)> = Vec::with_capacity(30);
+
+        let move_list = self.get_moves(self.state.side_to_move);
+        for m in move_list {
+            let state = self.state;
+            if self.make_move(m).is_ok() {
+                move_scores.push((m, minimax_search(self, 3)));
+            }
+            self.state = state;
+        }
+
+        let mut best = move_scores[0];
+
+        for (m, s) in move_scores {
+            println!("{}\t{}", m, s);
+            // black minimizes
+            if s < best.1 {
+                best = (m, s)
+            }
+        }
+        if self.make_move(best.0).is_err() {
+            println!("You won!");
+        }
+    }
+
     fn perft(&mut self, depth: usize, nodes: &mut u128, print_moves: bool) {
         if depth != 0 {
             // generate the move list for the current position
@@ -320,7 +502,6 @@ impl ChessEngine for BitBoardEngine {
                         println!("{}:{}", move_name, move_nodes);
                     }
                     *nodes += move_nodes;
-                    //self.unmake_move();
                     self.state = state;
                 }
             }
@@ -328,11 +509,76 @@ impl ChessEngine for BitBoardEngine {
             *nodes += 1;
         }
     }
+
+    fn perft_get_records(&mut self, depth: usize, moves: &Vec<String>) -> Result<Vec<MoveRecord>> {
+        let mut records = vec![];
+        if depth != 0 {
+            //FIXME: bools have not been set here!
+            // This will break when the moves require appropiate flags!
+            for m in moves {
+                let (start, end) = m.split_at(2);
+
+                let source = start.parse::<Coord>().unwrap();
+                let target = end.parse::<Coord>().unwrap();
+
+                if m.len() > 4 {
+                    //TODO: PARSE PROMOTIONS
+                    let (_, promotion) = end.split_at(2);
+                    println!("FIXME: end was {}", end);
+                    println!("promotion:{}", promotion);
+                }
+                let mov = Move::new(source, target, self.peek_piece(source).unwrap(), None);
+                self.make_move(mov).unwrap();
+            }
+
+            // generate the move list for the current position
+            let move_list = self.get_moves(self.state.side_to_move);
+
+            for mov in move_list {
+                let mut move_name: String = mov
+                    .to_string()
+                    .split_whitespace()
+                    .next()
+                    .unwrap()
+                    .to_string();
+
+                if let Some(prom) = mov.promoted_piece {
+                    match prom {
+                        Piece::Queen(_) => move_name.push('q'),
+                        Piece::Rook(_) => move_name.push('r'),
+                        Piece::Knight(_) => move_name.push('n'),
+                        Piece::Bishop(_) => move_name.push('b'),
+                        _ => (),
+                    };
+                }
+
+                let state = self.state;
+
+                if self.make_move(mov).is_ok() {
+                    let mut move_nodes = 0;
+                    if depth > 1 {
+                        self.perft(depth - 1, &mut move_nodes, false);
+                    } else {
+                        move_nodes = 1;
+                    }
+                    records.push(MoveRecord {
+                        name: move_name,
+                        count: move_nodes,
+                    });
+                    self.state = state;
+                }
+            }
+            Ok(records)
+        } else {
+            Ok(vec![])
+        }
+    }
 }
 
 impl BitBoardEngine {
     pub fn init(&mut self) {
-        self.attack_tables.init();
+        let x = Rc::get_mut(&mut self.attack_tables).unwrap();
+        x.init();
     }
 
     pub fn new() -> Self {
@@ -340,9 +586,22 @@ impl BitBoardEngine {
     }
 
     pub fn _set_position(&mut self, b: Board) {
+        for i in [WHITE_PIECES, BLACK_PIECES].concat() {
+            self.state.current_position[i].clear();
+        }
+        for i in 0..3 {
+            self.state.occupancies[i].clear();
+        }
+        // clear the piece lists
+        self.state.white_piece_lists = [(None, 0); 16];
+        self.state.black_piece_lists = [(None, 0); 16];
+
+        let mut white_piece_counter = 0;
+        let mut black_piece_counter = 0;
         for (sq, p) in b.squares.iter().enumerate() {
             if p.is_some() {
-                match p.unwrap() {
+                let piece = p.unwrap();
+                match piece {
                     Piece::King(White) => self.state.current_position[WHITE_KING].set_bit(sq),
                     Piece::Queen(White) => self.state.current_position[WHITE_QUEEN].set_bit(sq),
                     Piece::Rook(White) => self.state.current_position[WHITE_ROOK].set_bit(sq),
@@ -357,8 +616,16 @@ impl BitBoardEngine {
                     Piece::Knight(Black) => self.state.current_position[BLACK_KNIGHT].set_bit(sq),
                     Piece::Pawn(Black) => self.state.current_position[BLACK_PAWN].set_bit(sq),
                 }
+                if piece.get_color() == White {
+                    self.state.white_piece_lists[white_piece_counter] = (Some(piece), sq);
+                    white_piece_counter += 1;
+                } else {
+                    self.state.black_piece_lists[black_piece_counter] = (Some(piece), sq);
+                    black_piece_counter += 1;
+                }
             }
         }
+
         for i in WHITE_PAWN..BLACK_PAWN {
             self.state.occupancies[White as usize]
                 .set(self.state.occupancies[White].get() | self.state.current_position[i].get());
@@ -401,7 +668,10 @@ impl BitBoardEngine {
                 let queen = self.state.current_position[WHITE_QUEEN].get()
                     & get_queen_attack(&self.attack_tables, sq, self.state.occupancies[BOTH]).get()
                     != 0;
-                let king = false;
+
+                let king = self.state.current_position[WHITE_KING].get()
+                    & self.attack_tables.king_attacks[sq].get()
+                    != 0;
 
                 pawn || knight || bishop || rook || queen || king
             }
@@ -424,9 +694,11 @@ impl BitBoardEngine {
                     != 0;
 
                 let queen = self.state.current_position[BLACK_QUEEN].get()
-                    & get_queen_attack(&self.attack_tables, sq, self.state.occupancies[0]).get()
+                    & get_queen_attack(&self.attack_tables, sq, self.state.occupancies[BOTH]).get()
                     != 0;
-                let king = false;
+                let king = self.state.current_position[BLACK_KING].get()
+                    & self.attack_tables.king_attacks[sq].get()
+                    != 0;
 
                 pawn || knight || bishop || rook || queen || king
             }
@@ -434,7 +706,7 @@ impl BitBoardEngine {
     }
     #[inline]
     fn _get_moves(&self, side: Color) -> Vec<Move> {
-        let mut moves = vec![];
+        let mut moves = Vec::with_capacity(30);
 
         let piece_lists = match side {
             White => WHITE_PIECES,
@@ -459,7 +731,11 @@ impl BitBoardEngine {
                 }
             }
         }
+
         moves
+            .into_iter()
+            .filter(|m| self.test_move_legality(*m).is_ok())
+            .collect()
     }
 }
 
@@ -587,7 +863,7 @@ fn initialise_bishop_attacks(bishop_masks: &mut Vec<BitBoard>, table: &mut Vec<V
     }
 }
 
-fn initialise_knight_attacks(table: &mut Vec<BitBoard>) {
+fn initialise_knight_attacks(table: &mut [BitBoard]) {
     for (i, t) in table.iter_mut().enumerate() {
         *t = generate_knight_mask(i);
     }
@@ -597,5 +873,42 @@ fn initialise_pawn_attacks(table: &mut Vec<Vec<BitBoard>>) {
     for i in 0..64 {
         table[White as usize][i] = generate_pawn_mask(i, White);
         table[Black as usize][i] = generate_pawn_mask(i, Black);
+    }
+}
+
+fn minimax_search(engine: &mut BitBoardEngine, depth: usize) -> f32 {
+    if depth == 0 {
+        return engine.evaluate();
+    }
+    let player = engine.state.side_to_move;
+    if player == White {
+        let mut max_eval: f32 = std::f32::MIN;
+        // generate the move list for the current position
+        let move_list = engine.get_moves(player);
+        for mov in move_list {
+            // store current state
+            let state = engine.state;
+            //make move and evaluate
+            if engine.make_move(mov).is_ok() {
+                max_eval = f32::max(minimax_search(engine, depth - 1), max_eval);
+            }
+            //restore state
+            engine.state = state;
+        }
+        max_eval
+    } else {
+        let mut min_eval: f32 = std::f32::MAX;
+        // generate the move list for the current position
+        let move_list = engine.get_moves(player);
+
+        for mov in move_list {
+            let state = engine.state;
+
+            if engine.make_move(mov).is_ok() {
+                min_eval = f32::min(minimax_search(engine, depth - 1), min_eval);
+            }
+            engine.state = state;
+        }
+        min_eval
     }
 }
