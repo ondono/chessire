@@ -20,7 +20,7 @@ rayon = "1.5"
 itertools = "0.10"
 
 # Benchmarking and profiling
-criterion = "*"
+cargo-criterion = "*"
 
 # Own dependencies
 chessire-utils = { path = "../chessire-utils"}

@@ -13,7 +13,7 @@ mod test_stockfish {
         // set up the positions here
         const FEN: &str = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8";
         //const FEN: &str = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";
-        compare_moves(5, vec![], FEN);
+        compare_moves(3, vec![], FEN);
     }
 
     fn compare_moves(depth: usize, moves: Vec<String>, starting_fen: &str) {

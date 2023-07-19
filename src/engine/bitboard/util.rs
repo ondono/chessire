@@ -35,13 +35,7 @@ impl BitBoard {
     }
     #[inline]
     pub fn popcount(&self) -> usize {
-        let mut c = self.get();
-        let mut count = 0;
-        while c != 0 {
-            c &= c - 1;
-            count += 1;
-        }
-        count
+        self.0.count_ones() as usize
     }
     #[inline]
     pub fn get_lsb(&self) -> Option<usize> {
