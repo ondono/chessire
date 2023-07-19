@@ -59,26 +59,26 @@ fn uci_unkown_command(mut cmd: std::str::SplitAsciiWhitespace) {
     println!("[ERROR] unkown UCI command {}", cmd.next().unwrap_or(""));
 }
 
-fn uci_set_option(mut cmd: std::str::SplitAsciiWhitespace) {
+fn uci_set_option(_cmd: std::str::SplitAsciiWhitespace) {
     // unimplemented!();
 }
 
-fn uci_register(mut cmd: std::str::SplitAsciiWhitespace) {
+fn uci_register(_cmd: std::str::SplitAsciiWhitespace) {
     //unimplemented!()
 }
 
-fn uci_new_game(mut cmd: std::str::SplitAsciiWhitespace, engine: &mut impl ChessEngine) {
+fn uci_new_game(_cmd: std::str::SplitAsciiWhitespace, _engine: &mut impl ChessEngine) {
     //engine.set_position();
 }
 
-fn uci_position(mut cmd: std::str::SplitAsciiWhitespace, engine: &mut impl ChessEngine) {
+fn uci_position(mut cmd: std::str::SplitAsciiWhitespace, _engine: &mut impl ChessEngine) {
     match cmd.next().unwrap_or("") {
         "startpos" => {
             //board.reset_position();
             // now we need to handle the moves list
             match cmd.next().unwrap_or("") {
                 "moves" => {
-                    for m in cmd {
+                    for _m in cmd {
                         //let mov = Move::from_algebraic(board.clone(), m);
                         //board.apply_move(mov);
                     }
@@ -116,10 +116,10 @@ fn uci_go(mut cmd: std::str::SplitAsciiWhitespace, engine: &mut impl ChessEngine
     println!("bestmove {}", mov);
 }
 
-fn uci_stop(mut cmd: std::str::SplitAsciiWhitespace) {
+fn uci_stop(_cmd: std::str::SplitAsciiWhitespace) {
     unimplemented!();
 }
 
-fn uci_ponderhit(mut cmd: std::str::SplitAsciiWhitespace) {
+fn uci_ponderhit(_cmd: std::str::SplitAsciiWhitespace) {
     unimplemented!();
 }

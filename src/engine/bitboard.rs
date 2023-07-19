@@ -439,7 +439,7 @@ impl ChessEngine for BitBoardEngine {
         position_value
     }
 
-    fn search_best_move(&self, depth: usize) {
+    fn search_best_move(&self, _depth: usize) {
         // time to minimax
     }
 
