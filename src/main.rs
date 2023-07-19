@@ -2,7 +2,7 @@ use clap::{ArgEnum, Parser};
 
 use chessire::engine::bitboard::BitBoardEngine;
 use chessire::engine::ChessEngine;
-use chessire_utils::moves::print_movelist;
+
 
 //use termion::color;
 use chessire::interface::*;
@@ -50,7 +50,7 @@ fn main() {
                 use std::io::stdin;
                 println!("Running engine {}", engine.get_name());
                 println!("by {}", engine.get_author());
-                let mut g = chessire::ChessGame::new();
+                let g = chessire::ChessGame::new();
                 //g.clear();
                 //g.apply_fen(TEST_FEN).unwrap();
                 engine.set_position(g);
