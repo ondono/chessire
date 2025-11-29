@@ -175,7 +175,6 @@ pub fn get_queen_moves(bb: &BitBoardEngine, source_square: usize, color: Color) 
     )
 }
 pub fn get_king_moves(bb: &BitBoardEngine, source_square: usize, color: Color) -> Vec<Move> {
-    use super::index_from_bitmask;
     use super::*;
 
     // First regular moves

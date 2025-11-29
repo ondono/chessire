@@ -41,8 +41,6 @@ pub struct BitBoardState {
     //// they can't never be more than 32 pieces in the board!
     pub white_piece_lists: [(Option<Piece>, usize); 16],
     pub black_piece_lists: [(Option<Piece>, usize); 16],
-    //
-    //  pub
 }
 
 impl Default for BitBoardState {

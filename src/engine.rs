@@ -56,15 +56,19 @@ pub trait ChessEngine {
     fn play_best_move(&mut self);
     ///// non fundamental aspects
     /// returns the engines name
+ 
     fn get_name(&self) -> String;
     /// returns the authors name
+    
     fn get_author(&self) -> String;
 
     //// debugging functions
     /// get current internal state
     fn get_internal_position(&self) -> ChessGame;
+    
     /// perft functions
     fn perft(&mut self, depth: usize, node: &mut u128, print_moves: bool);
+    
     //
     fn perft_get_records(&mut self, depth: usize, moves: &Vec<String>) -> Result<Vec<MoveRecord>>;
 }
